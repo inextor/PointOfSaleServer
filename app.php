@@ -49,7 +49,7 @@ class App
 		{
 				$__user		 = 'root';
 				$__password	 = 'asdf';
-				$__db		 = 'point_of_sale';
+				$__db		 = 'pointofsale';
 				$__host		 = '127.0.0.1';
 				$__port		 = '3306';
 				app::$image_directory = './user_images';
@@ -65,7 +65,7 @@ class App
 				app::$is_debug	= false;
 
 				$__user		  = 'root';
-				$__password	  = 'point_of_sale';
+				$__password	  = 'pointofsale';
 				$__db			= 'archbel';
 				$__host		  = '127.0.0.1';
 				$__port		  = '3306';
@@ -133,21 +133,21 @@ class App
 		return null;
 	}
 
-	static function getOrganizationFromDomain()
-	{
-		$returned_var = app::getCustomHttpReferer();
-		$domain_url 	= parse_url( $returned_var );
+	//static function getOrganizationFromDomain()
+	//{
+	//	$returned_var = app::getCustomHttpReferer();
+	//	$domain_url 	= parse_url( $returned_var );
 
-		$domain_name	= $domain_url[ 'host' ];
+	//	$domain_name	= $domain_url[ 'host' ];
 
-		$domain = domain::searchFirst(array('name'=>$domain_name) );
+	//	$domain = domain::searchFirst(array('name'=>$domain_name) );
 
-		if( $domain )
-			return organization::get( $domain->organization_id);
+	//	if( $domain )
+	//		return organization::get( $domain->organization_id);
 
-		return null;
+	//	return null;
 
-	}
+	//}
 
 	static function getUserFromSession()
 	{
