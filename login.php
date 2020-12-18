@@ -1,6 +1,6 @@
 <?php
 
-namespace ARCHBEL;
+namespace POINT_OF_SALE;
 
 include_once( __DIR__.'/app.php' );
 
@@ -39,7 +39,7 @@ class LoginController extends SuperRest
 
 		$user = new user();
 		$params = $this->getMethodParams();
-		$organization = app::getOrganizationFromDomain();
+		//$organization = app::getOrganizationFromDomain();
 
 		//$user->assignFromArray($params,'username','password');
 		$user->username = strtolower( $params['username'] );
