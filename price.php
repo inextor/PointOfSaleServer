@@ -117,83 +117,36 @@ class Service extends SuperRest
 			$properties = price::getAllPropertiesExcept('created','updated','id','tiempo_actualizacion','tiempo_creacion');
 
 			$price = new price();
-			$price->assignFromArray( $params, $properties );
-			$price->unsetEmptyValues( DBTable::UNSET_BLANKS );
+			$price->store_id = $params['store_id'];
+			$price->item_id = $params['item_id'];
+			$price->price_type_id = $params['price_type_id'];
+			$price->setWhereString(false);
 
-			if( !$price->insert() )
+			$user = app::getUserFromSession();
+
+			if( !$price->load() )
 			{
-					throw new ValidationException('An error Ocurred please try again later',$price->_conn->error );
-			}
+				$price->assignFromArray($params, $properties );
+				$price->created_by_user_id = $user->id;
 
-			$results [] = $price->toArray();
-		}
-
-		return $results;
-	}
-
-	function batchUpdate($array)
-	{
-		$results = array();
-		$insert_with_ids = false;
-
-		foreach($array as $index=>$params )
-		{
-			$properties = price::getAllPropertiesExcept('created','updated','tiempo_actualizacion','tiempo_creacion');
-
-			$price = price::createFromArray( $params );
-
-			if( $insert_with_ids )
-			{
-				if( !empty( $price->id ) )
+				if( !$price->insert() )
 				{
-					if( $price->load(true) )
-					{
-						$price->assignFromArray( $params, $properties );
-						$price->unsetEmptyValues( DBTable::UNSET_BLANKS );
-
-						if( !$price->update($properties) )
-						{
-							throw new ValidationException('It fails to update element #'.$price->id);
-						}
-					}
-					else
-					{
-						if( !$price->insertDb() )
-						{
-							throw new ValidationException('It fails to update element at index #'.$index);
-						}
-					}
+					throw new ValidationException('An error Ocurred please try again later',$price->_conn->error );
 				}
 			}
 			else
 			{
-				if( !empty( $price->id ) )
+				$price->setWhereString(true);
+				$price->assignFromArray($params, $properties );
+				$price->updated_by_user_id = $user->id;
+
+				if( !$price->update( $properties ) )
 				{
-					$price->setWhereString( true );
-
-					$properties = price::getAllPropertiesExcept('id','created','updated','tiempo_creacion','tiempo_actualizacion');
-					$price->unsetEmptyValues( DBTable::UNSET_BLANKS );
-
-					if( !$price->updateDb( $properties ) )
-					{
-						throw new ValidationException('An error Ocurred please try again later',$price->_conn->error );
-					}
-
-					$price->load(true);
-
-					$results [] = $price->toArray();
-				}
-				else
-				{
-					$price->unsetEmptyValues( DBTable::UNSET_BLANKS );
-					if( !$price->insert() )
-					{
-						throw new ValidationException('An error Ocurred please try again later',$price->_conn->error );
-					}
-
-					$results [] = $price->toArray();
+					throw new ValidationException('An error Ocurred please try again later',$price->_conn->error );
 				}
 			}
+
+			$results [] = $price->toArray();
 		}
 
 		return $results;
