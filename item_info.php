@@ -16,7 +16,7 @@ class Service extends SuperRest
 		session_start();
 		App::connect();
 		$this->setAllowHeader();
-		$this->is_debug = false;
+		$this->is_debug = true;
 		$extra_join = '';
 		$extra_sort = array();
 
@@ -32,7 +32,11 @@ class Service extends SuperRest
 
 		if( !empty( $_GET['category_type'] ) || !empty( $_GET['category_name']) )
 		{
-			$extra_join = 'JOIN category ON category.id = item.category_id AND category.type = "'.$_GET['category_type'].'"';
+			$extra_join = 'JOIN category ON category.id = item.category_id ' ;
+
+			if( !empty( $_GET['category_type'])  )
+				$extra_join.=' AND category.type = "'.$_GET['category_type'].'"';
+
 			$extra_sort = array('category.name');
 		}
 
