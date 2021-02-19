@@ -36,7 +36,6 @@ class Service extends SuperRest
 			$extra_sort = array('category.name');
 		}
 
-		$this->is_debug = true;
 		return $this->genericGet("item",$constraints,$extra_join,$extra_sort);
 	}
 
