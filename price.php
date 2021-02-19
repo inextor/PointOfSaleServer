@@ -1,5 +1,5 @@
 <?php
-namespace POINT_OF_SALE;
+namespace APP;
 
 include_once( __DIR__.'/app.php' );
 include_once( __DIR__.'/akou/src/ArrayUtils.php');
@@ -11,6 +11,8 @@ use \akou\RestController;
 use \akou\ArrayUtils;
 use \akou\ValidationException;
 use \akou\LoggableException;
+use \akou\SystemException;
+use \akou\SessionException;
 
 
 class Service extends SuperRest
@@ -21,31 +23,9 @@ class Service extends SuperRest
 		App::connect();
 		$this->setAllowHeader();
 
-		if( isset( $_GET['id'] ) && !empty( $_GET['id'] ) )
-		{
-			$price = price::get( $_GET['id']  );
-
-			if( $price )
-			{
-				return $this->sendStatus( 200 )->json( $price->toArray() );
-			}
-			return $this->sendStatus( 404 )->json(array('error'=>'The element wasn\'t found'));
-		}
-
-		$constraints = $this->getAllConstraints( price::getAllProperties() );
-
-		$constraints_str = count( $constraints ) > 0 ? join(' AND ',$constraints ) : '1';
-		$pagination	= $this->getPagination();
-
-		$sql_prices	= 'SELECT SQL_CALC_FOUND_ROWS price.*
-			FROM `price`
-			WHERE '.$constraints_str.'
-			LIMIT '.$pagination->limit.'
-			OFFSET '.$pagination->offset;
-		$info	= DBTable::getArrayFromQuery( $sql_prices );
-		$total	= DBTable::getTotalRows();
-		return $this->sendStatus( 200 )->json(array("total"=>$total,"data"=>$info));
+		return $this->genericGet("price");
 	}
+
 	function post()
 	{
 		$this->setAllowHeader();
@@ -69,7 +49,7 @@ class Service extends SuperRest
 			DBTable::rollback();
 			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
 		}
-		catch(Exception $e)
+		catch(\Exception $e)
 		{
 			DBTable::rollback();
 			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
@@ -99,7 +79,7 @@ class Service extends SuperRest
 			DBTable::rollback();
 			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
 		}
-		catch(Exception $e)
+		catch(\Exception $e)
 		{
 			DBTable::rollback();
 			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
@@ -108,21 +88,21 @@ class Service extends SuperRest
 	}
 
 
-	function batchInsert($array)
+function batchInsert($array)
 	{
 		$results = array();
+		$user = app::getUserFromSession();
+
 
 		foreach($array as $params )
 		{
-			$properties = price::getAllPropertiesExcept('created','updated','id','tiempo_actualizacion','tiempo_creacion');
+			$properties = price::getAllPropertiesExcept('created','updated','id','updated','created_by_user_id','updated_by_user_id');
 
 			$price = new price();
 			$price->store_id = $params['store_id'];
 			$price->item_id = $params['item_id'];
 			$price->price_type_id = $params['price_type_id'];
 			$price->setWhereString(false);
-
-			$user = app::getUserFromSession();
 
 			if( !$price->load() )
 			{
@@ -151,50 +131,6 @@ class Service extends SuperRest
 
 		return $results;
 	}
-
-	/*
-	function delete()
-	{
-		try
-		{
-			app::connect();
-			DBTable::autocommit( false );
-
-			$user = app::getUserFromSession();
-			if( $user == null )
-				throw new ValidationException('Please login');
-
-			if( empty( $_GET['id'] ) )
-			{
-				$price = new price();
-				$price->id = $_GET['id'];
-
-				if( !$price->load(true) )
-				{
-					throw new NotFoundException('The element was not found');
-				}
-
-				if( !$price->deleteDb() )
-				{
-					throw new SystemException('An error occourred, please try again later');
-				}
-
-			}
-			DBTable::commit();
-			return $this->sendStatus( 200 )->json( $price->toArray() );
-		}
-		catch(LoggableException $e)
-		{
-			DBTable::rollback();
-			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
-		}
-		catch(Exception $e)
-		{
-			DBTable::rollback();
-			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
-		}
-	}
-	*/
 }
 $l = new Service();
 $l->execute();

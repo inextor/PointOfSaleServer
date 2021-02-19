@@ -1,6 +1,6 @@
 <?php
 
-namespace POINT_OF_SALE;
+namespace APP;
 
 include_once( __DIR__.'/app.php' );
 include_once( __DIR__.'/akou/src/ArrayUtils.php');
@@ -48,17 +48,19 @@ class Service extends SuperRest
 
 				if( $image->is_private && !empty( $usuario) && $usuario->id == $image->uploader_user_id )
 				{
-					$is_authorized = false;
+					$user = app::getUserFromSession();
+					$is_authorized = $user !== null;
+					//$is_authorized = false;
 
-					$image_user = new imagen_usuario();
-					$image_user->user_id = $
-					$image_user->image_id = $image->id;
-					$image_user->setWhereString();
+					//$image_user = new imagen_usuario();
+					//$image_user->user_id = $
+					//$image_user->image_id = $image->id;
+					//$image_user->setWhereString();
 
-					if( $image_user->load() )
-					{
-						$is_authorized = true;
-					}
+					//if( $image_user->load() )
+					//{
+					//	$is_authorized = true;
+					//}
 				}
 
 				if( !empty( $_GET['download'] ) )
@@ -69,9 +71,18 @@ class Service extends SuperRest
 
 				if( $is_authorized )
 				{
+
+					if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE'])) {
+						header('HTTP/1.1 304 Not Modified');
+						die();
+					}
+
+
 					header('Content-type: '.$image->content_type);
 					header('Content-length: '.$image->size);
-		  			header('Cache-Control: max-age=259200');
+		  			header('Cache-Control: max-age=259200', TRUE);
+					header('Last-Modified: '.gmdate(DATE_RFC1123,filemtime(app::$image_directory.'/'.$image->filename)),TRUE);
+
 					echo file_get_contents(app::$image_directory.'/'.$image->filename, true);
 				}
 				else

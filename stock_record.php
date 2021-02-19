@@ -5,9 +5,13 @@ include_once( __DIR__.'/app.php' );
 include_once( __DIR__.'/akou/src/ArrayUtils.php');
 include_once( __DIR__.'/SuperRest.php');
 
+use \akou\Utils;
 use \akou\DBTable;
+use \akou\RestController;
+use \akou\ArrayUtils;
 use \akou\ValidationException;
 use \akou\LoggableException;
+use \akou\SystemException;
 
 
 class Service extends SuperRest
@@ -18,7 +22,7 @@ class Service extends SuperRest
 		App::connect();
 		$this->setAllowHeader();
 
-		return $this->genericGet("order_item");
+		return $this->genericGet("stock_record");
 	}
 
 	function post()
@@ -82,18 +86,15 @@ class Service extends SuperRest
 
 	}
 
-	function batchInsert($order_item_array)
+	function batchInsert($array)
 	{
-		foreach($order_item_array as $oi )
-		{
-			$results[] = app::saveOrderItem($oi)->toArray();
-		}
+		return $this->genericInsert($array,"stock_record");
 	}
 
 	function batchUpdate($array)
 	{
 		$insert_with_ids = false;
-		return $this->genericUpdate($array, "order_item", $insert_with_ids );
+		return $this->genericUpdate($array, "stock_record", $insert_with_ids );
 	}
 
 	/*
@@ -101,7 +102,7 @@ class Service extends SuperRest
 	{
 		try
 		{
-			return $this->genericDelete("order_item");
+			return $this->genericDelete("stock_record");
 		}
 		catch(LoggableException $e)
 		{

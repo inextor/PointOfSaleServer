@@ -1,5 +1,5 @@
 <?php
-namespace POINT_OF_SALE;
+namespace APP;
 
 include_once( __DIR__.'/app.php' );
 include_once( __DIR__.'/akou/src/ArrayUtils.php');
@@ -70,7 +70,7 @@ class Service extends SuperRest
 			DBTable::rollback();
 			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
 		}
-		catch(Exception $e)
+		catch(\Exception $e)
 		{
 			DBTable::rollback();
 			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
@@ -100,7 +100,7 @@ class Service extends SuperRest
 			DBTable::rollback();
 			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
 		}
-		catch(Exception $e)
+		catch(\Exception $e)
 		{
 			DBTable::rollback();
 			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));

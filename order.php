@@ -1,17 +1,14 @@
 <?php
-namespace POINT_OF_SALE;
+namespace APP;
 
 include_once( __DIR__.'/app.php' );
 include_once( __DIR__.'/akou/src/ArrayUtils.php');
 include_once( __DIR__.'/SuperRest.php');
 
-use \akou\Utils;
 use \akou\DBTable;
-use \akou\RestController;
-use \akou\ArrayUtils;
 use \akou\ValidationException;
 use \akou\LoggableException;
-use \akou\SystemException;
+
 
 class Service extends SuperRest
 {
@@ -21,32 +18,9 @@ class Service extends SuperRest
 		App::connect();
 		$this->setAllowHeader();
 
-		if( isset( $_GET['id'] ) && !empty( $_GET['id'] ) )
-		{
-			$order = order::get( $_GET['id']  );
-
-			if( $order )
-			{
-				return $this->sendStatus( 200 )->json( $order->toArray() );
-			}
-			return $this->sendStatus( 404 )->json(array('error'=>'The element wasn\'t found'));
-		}
-
-
-		$constraints = $this->getAllConstraints( order::getAllProperties() );
-
-		$constraints_str = count( $constraints ) > 0 ? join(' AND ',$constraints ) : '1';
-		$pagination	= $this->getPagination();
-
-		$sql_orders	= 'SELECT SQL_CALC_FOUND_ROWS order.*
-			FROM `order`
-			WHERE '.$constraints_str.'
-			LIMIT '.$pagination->limit.'
-			OFFSET '.$pagination->offset;
-		$info	= DBTable::getArrayFromQuery( $sql_orders );
-		$total	= DBTable::getTotalRows();
-		return $this->sendStatus( 200 )->json(array("total"=>$total,"data"=>$info));
+		return $this->genericGet("order");
 	}
+
 	function post()
 	{
 		$this->setAllowHeader();
@@ -70,7 +44,7 @@ class Service extends SuperRest
 			DBTable::rollback();
 			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
 		}
-		catch(Exception $e)
+		catch(\Exception $e)
 		{
 			DBTable::rollback();
 			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
@@ -100,7 +74,7 @@ class Service extends SuperRest
 			DBTable::rollback();
 			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
 		}
-		catch(Exception $e)
+		catch(\Exception $e)
 		{
 			DBTable::rollback();
 			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
@@ -108,114 +82,30 @@ class Service extends SuperRest
 
 	}
 
-	function batchUpdate($order_info_array)
-	{
-		$orden_ids = array();
-
-		foreach( $orden_info_array as $orden_info )
-		{
-			if( empty( $orden_info['orden']['id'] ) )
-			{
-				$orden = $this->insertOrden( $orden_info );
-				$orden_ids[] = $orden->id;
-			}
-			else
-			{
-				$orden = $this->updateOrden( $orden_info );
-				$orden_ids[] = $orden->id;
-			}
-		}
-
-		$orden_array = orden::search(array('id'=>$orden_ids),false,'id');
-		return $this->getOrdenInfo( $orden_array );
-	}
-
 	function batchInsert($array)
 	{
-		$results = array();
-
-		foreach($array as $params )
-		{
-			$properties = order::getAllPropertiesExcept('created','updated','id');
-
-			$order = new order();
-			$order->assignFromArray( $params, $properties );
-			$order->unsetEmptyValues( DBTable::UNSET_BLANKS );
-
-			if( !$order->insert() )
-			{
-					throw new ValidationException('An error Ocurred please try again later',$order->_conn->error );
-			}
-
-			$results [] = $order->toArray();
-		}
-
-		return $results;
+		return $this->genericInsert($array,"order");
 	}
+	/*
 
-	function updateOrden($order_info)
+	function delete()
 	{
-		$orden->id = $orden_info['orden']['id'];
-		$props = order::getAllPropertiesExcept('created','updated','id');
-		$orden->assignFromArray( $orden_info['orden'], $props );
-
-		$orden->setWhereString( true );
-
-		if( !$orden->update() )
+		try
 		{
-			throw new SystemException('Ocurrio un error, por favor intente más tarde. '.$orden->_conn->error);
+			return $this->genericDelete("order");
 		}
-
-		if( empty($orden_info['items'] )  )
-			throw new SystemException('Items cant be empty');
-
-		//foreach($orden_info['items'] as $oi)
-		//{
-		//	$order_item	= new orden_item();
-
-		//	if( empty( $oi['order_item']['id'] ) )
-		//	{
-		//		$this->insertOrderItem( $orden, $od['order_item'] );
-		//	}
-		//	else
-		//	{
-		//		$this->updateOrderItem( $orden, $od['order_item'] );
-		//		//Magic here
-		//	}
-		//}
+		catch(LoggableException $e)
+		{
+			DBTable::rollback();
+			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
+		}
+		catch(Exception $e)
+		{
+			DBTable::rollback();
+			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
+		}
 	}
-
-	//function insertOrderItem($order_item_params)
-	//{
-	//	$order_item = new order_item();
-	//	$order_item->assignFromArray( $order_item_params );
-
-	//	$order->unsetEmptyValues( DBTable::UNSET_BLANKS );
-
-	//	if( !$order_item->insertDb() )
-	//	{
-	//		throw new SystemException('Ocurrio un error, por favor intente más tarde. '.$order_item->_conn->error);
-	//	}
-
-	//	return $order_item;
-	//}
-
-	//function insertOrderItem($order_item_params)
-	//{
-	//	$order_item = new order_item();
-	//	$props	= order_item::getAllPropertiesExcept('id','created','updated');
-	//	$order_item->assignFromArray( $order_item_params, $props );
-
-	//	$order->unsetEmptyValues( DBTable::UNSET_BLANKS );
-
-	//	if( !$order_item->insertDb() )
-	//	{
-	//		throw new SystemException('Ocurrio un error, por favor intente más tarde. '.$order_item->_conn->error);
-	//	}
-
-	//	return $order_item;
-	//}
+	*/
 }
-
 $l = new Service();
 $l->execute();

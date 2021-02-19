@@ -5,9 +5,13 @@ include_once( __DIR__.'/app.php' );
 include_once( __DIR__.'/akou/src/ArrayUtils.php');
 include_once( __DIR__.'/SuperRest.php');
 
+use \akou\Utils;
 use \akou\DBTable;
+use \akou\RestController;
+use \akou\ArrayUtils;
 use \akou\ValidationException;
 use \akou\LoggableException;
+use \akou\SystemException;
 
 
 class Service extends SuperRest
@@ -18,7 +22,7 @@ class Service extends SuperRest
 		App::connect();
 		$this->setAllowHeader();
 
-		return $this->genericGet("order_item");
+		return $this->genericGet("shipping");
 	}
 
 	function post()
@@ -82,39 +86,16 @@ class Service extends SuperRest
 
 	}
 
-	function batchInsert($order_item_array)
+	function batchInsert($array)
 	{
-		foreach($order_item_array as $oi )
-		{
-			$results[] = app::saveOrderItem($oi)->toArray();
-		}
+		return $this->genericInsert($array,"shipping");
 	}
 
 	function batchUpdate($array)
 	{
 		$insert_with_ids = false;
-		return $this->genericUpdate($array, "order_item", $insert_with_ids );
+		return $this->genericUpdate($array, "shipping", $insert_with_ids );
 	}
-
-	/*
-	function delete()
-	{
-		try
-		{
-			return $this->genericDelete("order_item");
-		}
-		catch(LoggableException $e)
-		{
-			DBTable::rollback();
-			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
-		}
-		catch(Exception $e)
-		{
-			DBTable::rollback();
-			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
-		}
-	}
-	*/
 }
 $l = new Service();
 $l->execute();

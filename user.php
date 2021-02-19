@@ -5,9 +5,13 @@ include_once( __DIR__.'/app.php' );
 include_once( __DIR__.'/akou/src/ArrayUtils.php');
 include_once( __DIR__.'/SuperRest.php');
 
+use \akou\Utils;
 use \akou\DBTable;
+use \akou\RestController;
+use \akou\ArrayUtils;
 use \akou\ValidationException;
 use \akou\LoggableException;
+use \akou\SystemException;
 
 
 class Service extends SuperRest
@@ -18,7 +22,7 @@ class Service extends SuperRest
 		App::connect();
 		$this->setAllowHeader();
 
-		return $this->genericGet("order_item");
+		return $this->genericGet("user");
 	}
 
 	function post()
@@ -82,18 +86,23 @@ class Service extends SuperRest
 
 	}
 
-	function batchInsert($order_item_array)
+	function batchInsert($array)
 	{
-		foreach($order_item_array as $oi )
+		$preferences = preferences::get( 1 );
+		if( !$preferences || empty( $preferences->default_price_type_id ) )
 		{
-			$results[] = app::saveOrderItem($oi)->toArray();
+			$this->debug('preferences',$preferences);
+			throw new ValidationException('El precio por default no esta configurado, comunicarse con el administrador');
 		}
+
+		$system_values = array('price_type_id'=> $preferences->default_price_type_id );
+		return $this->genericInsert($array,"user",array(),$system_values);
 	}
 
 	function batchUpdate($array)
 	{
 		$insert_with_ids = false;
-		return $this->genericUpdate($array, "order_item", $insert_with_ids );
+		return $this->genericUpdate($array, "user", $insert_with_ids );
 	}
 
 	/*
@@ -101,7 +110,7 @@ class Service extends SuperRest
 	{
 		try
 		{
-			return $this->genericDelete("order_item");
+			return $this->genericDelete("user");
 		}
 		catch(LoggableException $e)
 		{

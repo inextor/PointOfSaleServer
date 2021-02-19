@@ -26,23 +26,28 @@ class Service extends SuperRest
 		$params = $this->getMethodParams();
 		$name = $params['method'];
 
+		DBTable::autocommit(false);
 		try
 		{
-
-			if( is_callable(array($this, $name) )){
-				return $this->$name();
+			if( is_callable(array($this, $name) ))
+			{
+				$result = $this->$name();
+				DBTable::commit();
+				return $result;
 			}
 			else
 			{
-				throw new ValidationException('No se encontro la funcion '.$name);
+				throw new ValidationException('No se encontro la función '.$name);
 			}
 		}
 		catch(LoggableException $e)
 		{
+			DBTable::rollback();
 			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
 		}
-		catch(Exception $e)
+		catch(\Exception $e)
 		{
+			DBTable::rollback();
 			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
 		}
 	}
