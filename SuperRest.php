@@ -4,6 +4,7 @@ namespace APP;
 include_once( __DIR__.'/app.php' );
 include_once( __DIR__.'/akou/src/ArrayUtils.php');
 
+use \akou\Utils;
 use \akou\DBTable;
 use \akou\ValidationException;
 use \akou\LoggableException;
@@ -56,6 +57,21 @@ class SuperRest extends \akou\RestController
 		return $constraints;
 	}
 
+	function getNotNullConstraints($parameters, $table_name='')
+	{
+		$fields_from_request = !empty( $_GET['_NN'] ) ? explode(',',$_GET['_NN']) : [];
+		$constraints = [];
+
+		foreach($parameters as $field_name )
+		{
+			if( in_array($field_name, $fields_from_request) )
+			{
+				$constraints[] =($table_name?$table_name.'.':''). $field_name.' IS NOT NULL';
+			}
+		}
+		return $constraints;
+	}
+
 	function getStartLikeConstraints( $array, $table_name)
 	{
 		$constraints = array();
@@ -64,7 +80,7 @@ class SuperRest extends \akou\RestController
 		{
 			if( isset( $_GET[$index.'^'] ) && $_GET[$index.'^'] !== '' )
 			{
-				$constraints[] = ($table_name?$table_name.'.':'').$index.' LIKE "'.DBTable::escape($_GET[ $index.'^' ]).'%"';
+				$constraints[] = ($table_name?$table_name.'.':'').$index.' LIKE "'.DBTable::escape( trim( $_GET[ $index.'^' ] ) ).'%"';
 			}
 		}
 		if( count( $constraints ) )
@@ -78,7 +94,7 @@ class SuperRest extends \akou\RestController
 		{
 			if( isset( $_GET[$index.static::LIKE_SYMBOL ] ) && $_GET[$index.static::LIKE_SYMBOL] !== '' )
 			{
-				$constraints[] = ($table_name?$table_name.'.':'').$index.' LIKE "'.DBTable::escape($_GET[ $index.static::LIKE_SYMBOL ]).'%"';
+				$constraints[] = ($table_name?$table_name.'.':'').$index.' LIKE "%'.DBTable::escape(trim($_GET[ $index.static::LIKE_SYMBOL ]) ) .'%"';
 			}
 		}
 		if( count( $constraints ) )
@@ -200,7 +216,8 @@ class SuperRest extends \akou\RestController
 		$le_than_constraints = $this->getSmallestOrEqualThanConstraints( $key_constraints, $table_name );
 		$csv_constraints	= $this->getCsvConstraints( $key_constraints, $table_name );
 		$start_constraints			= $this->getStartLikeConstraints( $key_constraints, $table_name );
-		return array_merge( $like_constraints, $equal_constrints,$bigger_than_constraints, $ge_constraints, $smallest_than_constraints,$le_than_constraints,$csv_constraints,$start_constraints );
+		$not_null_constrints		= $this->getNotNullConstraints( $key_constraints, $table_name );
+		return array_merge( $like_constraints, $equal_constrints, $bigger_than_constraints,$ge_constraints, $smallest_than_constraints,$le_than_constraints,$csv_constraints,$start_constraints, $not_null_constrints );
 	}
 
 	function getSessionErrors($usuario,$roles = NULL )
@@ -383,17 +400,19 @@ class SuperRest extends \akou\RestController
 
 	}
 
-	function genericUpdate($array, $table_name, $insert_with_ids)
+	function genericUpdate($array, $table_name, $insert_with_ids, $optional_values=array(),$system_values=array(),$banned_values=array())
 	{
 		$class_name = "APP\\$table_name";
 
 		$results = array();
 		$user = app::getUserFromSession();
 
+		$except = array_merge($banned_values,array('id','created','updated','tiempo_creacion','tiempo_actualizacion','updated_by_user_id','created_by_user_id'));
+
+		$properties = $class_name::getAllPropertiesExcept( $except );
+
 		foreach($array as $index=>$params )
 		{
-			$except = array('id','created','updated','tiempo_creacion','tiempo_actualizacion','updated_by_user_id','created_by_user_id');
-			$properties = $class_name::getAllPropertiesExcept( $except );
 
 			$obj_inst = $class_name::createFromArray( $params );
 

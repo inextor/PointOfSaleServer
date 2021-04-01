@@ -119,12 +119,11 @@ class Service extends SuperRest
 				$shipping_item->shipping_id = $shipping->id;
 
 				$sql = 'SELECT SUM(qty) AS total
-					FROM  container_content
-					WHERE container_id = "'.DBTable::escape( $shipping_item->container_id ).'"
-					GROUP BY container_id';
+					FROM  box_content
+					WHERE box_id = "'.DBTable::escape( $shipping_item->box_id ).'"
+					GROUP BY box_id';
 
 				$sql_result  = DBTable::query($sql);
-				error_log( $sql );
 
 				if( $sql_result && ($row = $sql_result->fetch_array() ) )
 				{
@@ -176,7 +175,6 @@ class Service extends SuperRest
 			$shipping_item_ids = array();
 
 			$sql = 'DELETE FROM shipping_item WHERE shipping_id = "'.DBTable::escape( $shipping->id ).'"';
-			//error_log( $sql );
 			DBTable::query( $sql );
 
 			foreach($shipping_item_array  as $si )

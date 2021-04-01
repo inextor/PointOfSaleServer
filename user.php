@@ -22,7 +22,17 @@ class Service extends SuperRest
 		App::connect();
 		$this->setAllowHeader();
 
-		return $this->genericGet("user");
+		$extra_joins = '';
+
+
+		//Por alguna razon llega com _ en vez de .
+		if( !empty( $_GET['user_permission_is_provider'] ) || !empty( $_GET['user_permission.is_provider'] ) )
+		{
+			$extra_joins = 'JOIN user_permission ON user_permission.user_id = user.id AND user_permission.is_provider = 1';
+		}
+
+		$this->is_debug = false;
+		return $this->genericGet('user',[],$extra_joins,[]);
 	}
 
 	function post()
