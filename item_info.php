@@ -48,9 +48,9 @@ class Service extends SuperRest
 		$item_props= ArrayUtils::getItemsProperties($item_array, 'id','category_id');
 		$category_array = category::search(array('id'=>$item_props['category_id']),false,'id');
 
-		$item_extra_array	= item_extra::searchGroupByIndex(array('item_id'=>$item_props['item_id']),false,'item_id');
-		$item_option_array	= item_option::searchGroupByIndex(array('item_id'=>$item_props['item_id']),false,'item_id');
-		$item_attributes_array	= item_attribute::searchGroupByIndex(array('item_id'=>$item_props['item_id']),false,'item_id');
+		$item_extra_array	= item_extra::searchGroupByIndex(array('item_id'=>$item_props['id']),false,'item_id');
+		$item_option_array	= item_option::searchGroupByIndex(array('item_id'=>$item_props['id']),false,'item_id');
+		$item_attributes_array	= item_attribute::searchGroupByIndex(array('item_id'=>$item_props['id']),false,'item_id');
 
 		$result = array();
 		$price_array	= array();
