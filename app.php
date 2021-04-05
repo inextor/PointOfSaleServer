@@ -274,7 +274,7 @@ class App
 		$merma->qty				 = $qty;
 		$merma->note			= $note;
 		$merma->created_by_user_id = $user->id;
-		//error_log('params -'.$item_id.'-'.$store_id.'-'.$user_id.'-'.$qty.'-'.$description);
+
 		if( !	$merma->insert() )
 		{
 			throw new SystemException('Ocurrio un error al registrar la merma por favor intentar mas tarde. '.$merma->getError());
@@ -306,14 +306,12 @@ class App
 			throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$merma->getError());
 
 		app::removeStock($merma->item_id,$stocktake->store_id,$user->id,$merma->qty,'Merma: '.$note);
-
 	}
 
 	static function addBoxContentMerma($stocktake,$box,$box_content,$note,$user)
 	{
 
 		$store_id = $box->store_id;
-		//error_log(print_r($stocktake,true).' '.print_r($box,true));
 
 		if( empty( $store_id ) )
 		{
@@ -364,6 +362,55 @@ class App
 
 		}
 		static::removeStock($order_item_fullfillment->item_id, $order->store_id, $user->id, $order_item_fullfillment->qty,'Surtiendo la orden '.$order->id);
+	}
+
+	static function adjustStock($item_id, $store_id, $user_id, $qty, $description )
+	{
+		$previous_stock_record = app::getLastStockRecord($store_id,$item_id);
+		$previous_stock_qty = $previous_stock_record == null ? 0 : $previous_stock_record->qty;
+
+		$movement_qty  = $qty - $previous_stock_qty;
+
+		$stock_record = new stock_record();
+		$stock_record->item_id			= $item_id;
+		$stock_record->store_id 		= $store_id;
+		$stock_record->previous_qty		= $previous_stock_qty;
+		$stock_record->qty				= $qty;
+		$stock_record->movement_type	= "ADJUSTMENT";
+		$stock_record->movement_qty		= $qty;
+		$stock_record->user_id			= $user_id;
+		$stock_record->description 		= $description;
+		$stock_record->created_by_user_id = $user_id;
+		$stock_record->updated_by_user_id = $user_id;
+
+		if( $movement_qty < 0 )
+		{
+			error_log('Se detecto merma en el ajuste');
+
+			$merma = new merma();
+			$merma->item_id		= $item_id;
+			$merma->store_id	= $store_id;
+			$merma->qty			= $qty;
+			$merma->note		= $description;
+			$merma->created_by_user_id = $user->id;
+
+			if( !$merma->insertDb() )
+			{
+				throw new SystemException('Ocurrio un error al Ajustar el inventario');
+			}
+		}
+
+		$stock_record->unsetEmptyValues( DBTable::UNSET_BLANKS );
+		print_r('Debug'.print_r($stock_record->toArray(),true), true);
+
+		if( !$stock_record->insertDb() )
+		{
+			error_log( $stock_record->getLastQuery() );
+			throw new SystemException("Ocurrio un error al actualizar el inventario");
+		}
+
+		return $stock_record;
+
 	}
 
 	static function addStock($item_id, $store_id, $user_id, $qty, $description)
