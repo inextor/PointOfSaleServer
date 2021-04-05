@@ -753,6 +753,26 @@ function removeBoxFromPallet()
 
 		$this->sendStatus(200)->json(true);
 	}
+
+	function adjustStock()
+	{
+		$user = app::getUserFromSession();
+		if( !$user )
+			throw new SessionException('Por favor iniciar session');
+
+
+		$params = $this->getMethodParams();
+
+		$results = array();
+
+		foreach($params['stock_records'] as $stock_record)
+		{
+			app::adjustStock($stock_record['item_id'], $stock_record['store_id'], $user->id, $stock_record['qty'], 'Ajuste de inventario');
+			$results[] = $stock_record;
+		}
+
+		return $results;
+	}
 }
 
 $l = new Service();
