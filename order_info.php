@@ -85,5 +85,6 @@ class Service extends SuperRest
 		return $result;
 	}
 }
+
 $l = new Service();
 $l->execute();

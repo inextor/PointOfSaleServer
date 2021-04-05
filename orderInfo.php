@@ -1,5 +1,5 @@
 <?php
-namespace POINT_OF_SALE;
+namespace APP;
 
 include_once( __DIR__.'/app.php' );
 include_once( __DIR__.'/akou/src/ArrayUtils.php');
@@ -21,32 +21,56 @@ class Service extends SuperRest
 		App::connect();
 		$this->setAllowHeader();
 
-		if( isset( $_GET['id'] ) && !empty( $_GET['id'] ) )
-		{
-			$order = order::get( $_GET['id']  );
-
-			if( $order )
-			{
-				return $this->sendStatus( 200 )->json( $order->toArray() );
-			}
-			return $this->sendStatus( 404 )->json(array('error'=>'The element wasn\'t found'));
-		}
-
-
-		$constraints = $this->getAllConstraints( order::getAllProperties() );
-
-		$constraints_str = count( $constraints ) > 0 ? join(' AND ',$constraints ) : '1';
-		$pagination	= $this->getPagination();
-
-		$sql_orders	= 'SELECT SQL_CALC_FOUND_ROWS order.*
-			FROM `order`
-			WHERE '.$constraints_str.'
-			LIMIT '.$pagination->limit.'
-			OFFSET '.$pagination->offset;
-		$info	= DBTable::getArrayFromQuery( $sql_orders );
-		$total	= DBTable::getTotalRows();
-		return $this->sendStatus( 200 )->json(array("total"=>$total,"data"=>$info));
+		return $this->genericGet("order");
 	}
+
+	function getInfo($order_array )
+	{
+		$props			= ArrayUtils::getItemsProperties('id','client_user_id','cashier_user_id');
+		$user_ids		= array_merge($props['client_user_id'],$props['cashier_user_id'] );
+		$user_array		= user::search(array('id'=>$user_ids),false,'id');
+		$order_item_array		= order_item::search(array('order_id'=>$props['id']),false,'id')
+		$items_props	= ArrayUtils::getItemsProperties($order_item,'item_id','item_option_id','item_extra_id');
+
+		$item_array			= item::search(array('id'=>$items_props['item_id']),false,'id');
+		$item_option_array	= item_options::search(array('id'=>$items_props['item_option_id']),false, 'id');
+		$item_extra_array	= item_extras::search(array('id'=>$items_props['item_extra_id']),false, 'id');
+
+		$order_item_grouped = ArrayUtils::groupByIndex( $order_item, 'order_id');
+		$result = array();
+
+		foreach($order_array as $order)
+		{
+			$order_items = isset( $order_item_grouped[ $order->id ] ) ? $order_item_grouped[ $order->id ] : array();
+
+			$order_item_info_array = array();
+			foreach($order_items as $order_item)
+			{
+				$item = $item_array[ $order_item['item_id'] ];
+				$item_option = $item_option_array[ $order_item['item_option_id'] ];
+				$item_extra	= $item_extra_array[ $order_item['item_extra_id'] ];
+
+				$order_item_info_array[] = array(
+					'order_item'	=> $order_item,
+					'item'			=> $item,
+					'item_option'	=> $item_option,
+					'item_extra'	=> $item_extra
+				)
+			}
+
+			$client = empty($order['client_user_id'] ) ? null : $client_array[ $order['client_user_id'] ];
+			$cashier= empty($order['cashier_user_id'] ) ? null : $client_array[ $order['cashier_user_id'] ];
+
+			$result = array(
+				'order'=>$order,
+				'items' => $order_items,
+				'client' => $client,
+				'cashier'	= $cashier
+			);
+		}
+	}
+
+
 	function post()
 	{
 		$this->setAllowHeader();
@@ -233,52 +257,6 @@ class Service extends SuperRest
 		}
 
 		return $order_item;
-	}
-
-	function getInfo($order_array )
-	{
-		$props			= ArrayUtils::getItemsProperties('id','client_user_id','cashier_user_id');
-		$user_ids		= array_merge($props['client_user_id'],$props['cashier_user_id'] );
-		$user_array		= user::search(array('id'=>$user_ids),false,'id');
-		$order_item_array		= order_item::search(array('order_id'=>$props['id']),false,'id')
-		$items_props	= ArrayUtils::getItemsProperties($order_item,'item_id','item_option_id','item_extra_id');
-
-		$item_array			= item::search(array('id'=>$items_props['item_id']),false,'id');
-		$item_option_array	= item_options::search(array('id'=>$items_props['item_option_id']),false, 'id');
-		$item_extra_array	= item_extras::search(array('id'=>$items_props['item_extra_id']),false, 'id');
-
-		$order_item_grouped = ArrayUtils::groupByIndex( $order_item, 'order_id');
-		$result = array();
-
-		foreach($order_array as $order)
-		{
-			$order_items = isset( $order_item_grouped[ $order->id ] ) ? $order_item_grouped[ $order->id ] : array();
-
-			$order_item_info_array = array();
-			foreach($order_items as $order_item)
-			{
-				$item = $item_array[ $order_item['item_id'] ];
-				$item_option = $item_option_array[ $order_item['item_option_id'] ];
-				$item_extra	= $item_extra_array[ $order_item['item_extra_id'] ];
-
-				$order_item_info_array[] = array(
-					'order_item'	=> $order_item,
-					'item'			=> $item,
-					'item_option'	=> $item_option,
-					'item_extra'	=> $item_extra
-				)
-			}
-
-			$client = empty($order['client_user_id'] ) ? null : $client_array[ $order['client_user_id'] ];
-			$cashier= empty($order['cashier_user_id'] ) ? null : $client_array[ $order['cashier_user_id'] ];
-
-			$result = array(
-				'order'=>$order,
-				'items' => $order_items,
-				'client' => $client,
-				'cashier'	= $cashier
-			);
-		}
 	}
 }
 

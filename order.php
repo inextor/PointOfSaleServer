@@ -8,7 +8,7 @@ include_once( __DIR__.'/SuperRest.php');
 use \akou\DBTable;
 use \akou\ValidationException;
 use \akou\LoggableException;
-
+use AKOU\SystemException;
 
 class Service extends SuperRest
 {
@@ -82,9 +82,42 @@ class Service extends SuperRest
 
 	}
 
+	function batchUpdate($array)
+	{
+
+		$props = order::getAllPropertiesExcept('store_id','total','subtotal','tax','amount_paid','created_by_user_id','updated_by_user_id','created','updated');
+
+		foreach($array as $order )
+		{
+			$order = order::get( $order['id'] );
+			$order->assignFromArray($order,$props);
+
+			if( !$order->update( $props ) )
+			{
+				throw new SystemException('Ocurrio un error por favor intetar mas tarde. '.$order->getError());
+			}
+		}
+	}
+
 	function batchInsert($array)
 	{
-		return $this->genericInsert($array,"order");
+		$user = app::getUserFromSession();
+
+		$this->debug('array',$array);
+		return $this->genericInsert($array, 'order', $optional_values=array('tota'=>0,'subtotal'=>0,'tax'=>0), $system_values=array('cashier_user_id'=>$user->id));
+
+		//$props = order::getAllPropertiesExcept('store_id','total','subtotal','tax','amount_paid','created_by_user_id','updated_by_user_id','created','updated');
+
+		//foreach($array as $order )
+		//{
+		//	$order = order::get( $order['id'] );
+		//	$order->assignFromArray($order,$props);
+
+		//	if( !$order->update( $props ) )
+		//	{
+		//		throw new SystemException('Ocurrio un error por favor intetar mas tarde. '.$order->getError());
+		//	}
+		//}
 	}
 	/*
 

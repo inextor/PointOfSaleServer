@@ -54,6 +54,63 @@ class bank_movement extends \akou\DBTable
 	var $created;
 	var $updated;
 }
+class bank_movement_bill extends \akou\DBTable
+{
+	var $id;
+	var $bank_movement_id;
+	var $bill_id;
+	var $amount;
+	var $created;
+	var $updated;
+}
+class bill extends \akou\DBTable
+{
+	var $id;
+	var $folio;
+	var $accepted_status;
+	var $organization_id;
+	var $aproved_by_user_id;
+	var $paid_by_user_id;
+	var $bank_account_id;
+	var $paid_to_bank_account_id;
+	var $provider_user_id;
+	var $purchase_order_id;
+	var $invoice_attachment_id;
+	var $pdf_attachment_id;
+	var $receipt_attachment_id;
+	var $note;
+	var $due_date;
+	var $paid_date;
+	var $total;
+	var $currency;
+	var $amount_paid;
+	var $status;
+	var $paid_status;
+	var $name;
+	var $created;
+	var $updated;
+}
+class box extends \akou\DBTable
+{
+	var $id;
+	var $status;
+	var $production_item_id;
+	var $type_item_id;
+	var $serial_number_range_start;
+	var $serial_number_range_end;
+	var $store_id;
+	var $created;
+	var $updated;
+}
+class box_content extends \akou\DBTable
+{
+	var $id;
+	var $box_id;
+	var $item_id;
+	var $qty;
+	var $serial_number_range_start;
+	var $serial_number_range_end;
+}
 class brand extends \akou\DBTable
 {
 	var $id;
@@ -83,7 +140,7 @@ class category extends \akou\DBTable
 	var $type;
 	var $image_id;
 	var $created_by_user_id;
-	var $modified_by_user_id;
+	var $updated_by_user_id;
 	var $created;
 	var $updated;
 }
@@ -147,14 +204,13 @@ class item_attribute extends \akou\DBTable
 {
 	var $id;
 	var $item_id;
-	var $attribute_name;
-	var $attribute_value;
+	var $name;
+	var $value;
 }
 class item_extra extends \akou\DBTable
 {
 	var $id;
 	var $item_id;
-	var $parent_item_id;
 	var $item_option_id;
 	var $included_qty;
 	var $max_extra_qty;
@@ -167,9 +223,9 @@ class item_option extends \akou\DBTable
 {
 	var $id;
 	var $item_id;
-	var $option_name;
-	var $included_options_qty;
-	var $max_options_qty;
+	var $name;
+	var $included_options;
+	var $max_options;
 	var $included_extra_qty;
 	var $max_extra_qty;
 }
@@ -186,7 +242,7 @@ class keyboard_shortcut extends \akou\DBTable
 class merma extends \akou\DBTable
 {
 	var $id;
-	var $shipping_id;
+	var $shipping_item_id;
 	var $store_id;
 	var $item_id;
 	var $qty;
@@ -215,6 +271,7 @@ class order extends \akou\DBTable
 	var $price_type_id;
 	var $currency_id;
 	var $status;
+	var $tag;
 	var $attended_status;
 	var $paid_timetamp;
 	var $client_name;
@@ -241,6 +298,7 @@ class order_item extends \akou\DBTable
 	var $commanda_status;
 	var $item_id;
 	var $item_option_id;
+	var $return_required;
 	var $item_extra_id;
 	var $is_item_extra;
 	var $note;
@@ -251,6 +309,26 @@ class order_item extends \akou\DBTable
 	var $subtotal;
 	var $tax;
 	var $total;
+}
+class pallet extends \akou\DBTable
+{
+	var $id;
+	var $store_id;
+	var $production_item_id;
+	var $created;
+	var $updated;
+	var $created_by_user_id;
+}
+class pallet_content extends \akou\DBTable
+{
+	var $id;
+	var $pallet_id;
+	var $box_id;
+	var $status;
+	var $created_by_user_id;
+	var $updated_by_user_id;
+	var $created;
+	var $updated;
 }
 class payment extends \akou\DBTable
 {
@@ -312,7 +390,7 @@ class preparation_area extends \akou\DBTable
 class price extends \akou\DBTable
 {
 	var $id;
-	var $store_id;
+	var $price_list_id;
 	var $currency_id;
 	var $item_id;
 	var $price_type_id;
@@ -321,6 +399,15 @@ class price extends \akou\DBTable
 	var $updated_by_user_id;
 	var $created;
 	var $updated;
+}
+class price_list extends \akou\DBTable
+{
+	var $id;
+	var $name;
+	var $created;
+	var $updated;
+	var $created_by_user_id;
+	var $updated_by_user_id;
 }
 class price_type extends \akou\DBTable
 {
@@ -343,16 +430,6 @@ class production_type_item extends \akou\DBTable
 {
 	var $id;
 	var $production_type_item_id;
-}
-class provider extends \akou\DBTable
-{
-	var $id;
-	var $name;
-	var $description;
-	var $created_by_user_id;
-	var $updated_by_user_id;
-	var $created;
-	var $updated;
 }
 class push_notification extends \akou\DBTable
 {
@@ -404,7 +481,7 @@ class shipping_item extends \akou\DBTable
 	var $shipping_id;
 	var $requisition_item_id;
 	var $item_id;
-	var $container_id;
+	var $box_id;
 	var $pallet_id;
 	var $qty;
 	var $received_qty;
@@ -431,10 +508,51 @@ class stock_record extends \akou\DBTable
 	var $created;
 	var $updated;
 }
+class stocktake extends \akou\DBTable
+{
+	var $id;
+	var $store_id;
+	var $name;
+	var $status;
+	var $created;
+	var $updated;
+	var $created_by_user_id;
+	var $updated_by_user_id;
+}
+class stocktake_item extends \akou\DBTable
+{
+	var $id;
+	var $stocktake_id;
+	var $box_id;
+	var $box_content_id;
+	var $pallet_id;
+	var $item_id;
+	var $creation_qty;
+	var $current_qty;
+	var $created_by_user_id;
+	var $updated_by_user_id;
+	var $created;
+	var $updated;
+}
+class stocktake_scan extends \akou\DBTable
+{
+	var $id;
+	var $stocktake_id;
+	var $pallet_id;
+	var $box_id;
+	var $box_content_id;
+	var $item_id;
+	var $qty;
+	var $created_by_user_id;
+	var $updated_by_user_id;
+	var $created;
+	var $updated;
+}
 class store extends \akou\DBTable
 {
 	var $id;
 	var $client_user_id;
+	var $price_list_id;
 	var $exchange_rate;
 	var $name;
 	var $business_name;
@@ -503,10 +621,19 @@ class user_permission extends \akou\DBTable
 	var $add_stock;
 	var $price_types;
 	var $production;
+	var $fullfill_orders;
+	var $pay_bills;
+	var $approve_bill_payments;
+	var $add_bills;
+	var $stocktake;
 	var $add_marbetes;
 	var $asign_marbetes;
 	var $created_by_user_id;
 	var $updated_by_user_id;
 	var $created;
 	var $updated;
+	var $add_providers;
+	var $global_bills;
+	var $global_stats;
+	var $is_provider;
 }
