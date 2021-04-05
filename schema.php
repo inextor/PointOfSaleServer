@@ -272,6 +272,9 @@ class order extends \akou\DBTable
 	var $currency_id;
 	var $status;
 	var $paid_status;
+	var $facturado;
+	var $sat_xml_file_id;
+	var $sat_pdf_id;
 	var $tag;
 	var $attended_status;
 	var $paid_timetamp;
