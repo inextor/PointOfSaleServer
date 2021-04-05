@@ -83,7 +83,7 @@ class Service extends SuperRest
 			$result[] = array(
 				'item'=>$item,
 				'category'=>$category_array[ $item['category_id'] ],
-				'stock_record'=> $stocks,
+				'records'=> $stocks,
 				'total'=>$total
 			);
 		}

@@ -45,7 +45,7 @@ class App
 	{
 		DBTable::$_parse_data_types = TRUE;
 
-		 if( !isset( $_SERVER['SERVER_ADDR'])  || $_SERVER['SERVER_ADDR'] =='127.0.0.1' || $_SERVER['SERVER_ADDR'] == '2806:1000:8201:71d:42b0:76ff:fed9:5901')
+		 if( !isset( $_SERVER['SERVER_ADDR'])	|| $_SERVER['SERVER_ADDR'] =='127.0.0.1' || $_SERVER['SERVER_ADDR'] == '2806:1000:8201:71d:42b0:76ff:fed9:5901')
 		{
 				$__user		 = 'root';
 				$__password	 = 'asdf';
@@ -64,11 +64,11 @@ class App
 				Utils::$DB_MAX_LOG_LEVEL	= Utils::LOG_LEVEL_ERROR;
 				app::$is_debug	= false;
 
-				$__user		  = 'root';
-				$__password	  = 'pointofsale';
+				$__user			= 'root';
+				$__password		= 'pointofsale';
 				$__db			= 'archbel';
-				$__host		  = '127.0.0.1';
-				$__port		  = '3306';
+				$__host			= '127.0.0.1';
+				$__port			= '3306';
 
 				app::$image_directory = './user_images';
 				app::$attachment_directory = './user_files';
@@ -265,10 +265,109 @@ class App
 		return null;
 }
 
+	static function addStocktakeMerma($stocktake,$box,$item_id,$qty,$user,$note)
+	{
+		$merma = new merma();
+		$merma->box_id	= $box->id;
+		$merma->stocktake_id	= $stocktake->id;
+		$merma->item_id		 = $item_id;
+		$merma->qty				 = $qty;
+		$merma->note			= $note;
+		$merma->created_by_user_id = $user->id;
+		//error_log('params -'.$item_id.'-'.$store_id.'-'.$user_id.'-'.$qty.'-'.$description);
+		if( !	$merma->insert() )
+		{
+			throw new SystemException('Ocurrio un error al registrar la merma por favor intentar mas tarde. '.$merma->getError());
+		}
+
+		$box_content = box_content::searchFirst(array('item_id'=>$item_id,'box_id'=>$box->id));
+
+		if( !$box_content )
+		{
+			throw new ValidationException('La caja no contiene el artículo especificado');
+		}
+
+		if( $box_content->qty < $qty )
+		{
+			throw new ValidationException('No se puede registrar una merma mayor al contenido de la caja');
+		}
+
+		$box_content->qty -= $qty;
+
+		if( !$box_content->update('qty') )
+		{
+			throw new SystemException('Ocurrio un error al actualizar los valores. '.$box_content->getError());
+		}
+
+		if( ! $box_content->update('qty') )
+			throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$box_content->getError());
+
+		if( !$merma->insert() )
+			throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$merma->getError());
+
+		app::removeStock($merma->item_id,$stocktake->store_id,$user->id,$merma->qty,'Merma: '.$note);
+
+	}
+
+	static function addBoxContentMerma($stocktake,$box,$box_content,$note,$user)
+	{
+
+		$store_id = $box->store_id;
+		//error_log(print_r($stocktake,true).' '.print_r($box,true));
+
+		if( empty( $store_id ) )
+		{
+			if( $stocktake != null )
+			{
+				$store_id = $stocktake->store_id;
+			}
+			else
+			{
+				//Se supone que nunca pasa
+				throw new ValidationException('Ocurrio un error no se pudo ubicar la caja');
+			}
+		}
+		//error_log('Container'.print_r($box->toArray(),true) );
+		//error_log('stocktake'.print_r($stocktake,true) );
+
+		$merma = new merma();
+		$merma->box_id	= $box->id;
+		$merma->stocktake_id	= $stocktake ? $stocktake->id : null;
+		$merma->item_id		 = $box_content->item_id;
+		$merma->store_id		= $store_id;
+		$merma->qty				 = $box_content->qty;
+		$merma->note			= $note;
+		$merma->created_by_user_id		=	$user->id;
+
+
+		if( !$merma->insert() )
+		{
+			throw new SystemException('Ocurrio un error al registrar la merma por favor intentar mas tarde. '.$box_content->getError());
+		}
+
+		$box_content->qty = 0;
+
+		if( ! $box_content->update('qty') )
+			throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$box_content->getError());
+
+		app::removeStock($merma->item_id,$store_id,$user->id,$merma->qty,'Merma: '.$note);
+	}
+
+	static function reduceFullfillInfo($order,$order_item_fullfillment,$user)
+	{
+		$box_content = box_content::searchFirst(array('box_id'=>$order_item_fullfillment->box_id, 'item_id'=>$order_item_fullfillment->item_id ));
+
+		$box_content->qty -= $order_item_fullfillment->qty;
+
+		if( !$box_content->update('qty') )
+		{
+
+		}
+		static::removeStock($order_item_fullfillment->item_id, $order->store_id, $user->id, $order_item_fullfillment->qty,'Surtiendo la orden '.$order->id);
+	}
+
 	static function addStock($item_id, $store_id, $user_id, $qty, $description)
 	{
-		//error_log('params -'.$item_id.'-'.$store_id.'-'.$user_id.'-'.$qty.'-'.$description);
-
 		$previous_stock_record = app::getLastStockRecord($store_id,$item_id);
 
 		$previous_stock_qty = $previous_stock_record == null ? 0 :	$previous_stock_record->qty;
@@ -297,15 +396,15 @@ class App
 		return $stock_record;
 	}
 
-	static function sendShippingContainerContent($shipping,$shipping_item, $container, $container_content, $user )
+	static function sendShippingBoxContent($shipping,$shipping_item, $box, $box_content, $user )
 	{
-		$message = 'Se envio en la caja'.$container->id.' del envio '.$shipping->id;
+		$message = 'Se envio en la caja'.$box->id.' del envio '.$shipping->id;
 		$stock_record = static::removeStock
 		(
-			$container_content->item_id,
+			$box_content->item_id,
 			$shipping->from_store_id,
 			$user->id,
-			$container_content->qty,
+			$box_content->qty,
 			$message
 		);
 
@@ -313,12 +412,12 @@ class App
 		$stock_record->update('shipping_item_id');
 	}
 
-	static function receiveShippingContainerContent($shipping,$shipping_item,$container,$container_content,$received_qty,$user)
+	static function receiveShippingBoxContent($shipping,$shipping_item,$box,$box_content,$received_qty,$user)
 	{
-		$message = 'Se Recibio en el envio '.$shipping->id.' en la caja '.$container->id;
+		$message = 'Se Recibio en el envio '.$shipping->id.' en la caja '.$box->id;
 		$stock_record = static::addStock
 		(
-			$container_content->item_id,
+			$box_content->item_id,
 			$shipping->to_store_id,
 			$user->id,
 			$received_qty,
@@ -326,7 +425,7 @@ class App
 		);
 
 		$stock_record->shipping_item_id = $shipping_item->id;
-		$merma = $container_content->qty - $received_qty;
+		$merma = $box_content->qty - $received_qty;
 
 		if( !$stock_record->update('shipping_item_id') )
 		{
@@ -342,9 +441,9 @@ class App
 
 	static function sendShippingItem($shipping, $shipping_item, $user )
 	{
-		if( $shipping_item->container_id || $shipping_item->pallet_id )
+		if( $shipping_item->box_id || $shipping_item->pallet_id )
 		{
-			throw new ValidationException('Please use function sendShippingContainerContent');
+			throw new ValidationException('Please use function sendShippingBoxContent');
 		}
 
 		$message = 'Se envio en el envio "'.$shipping->id.'"';
@@ -487,19 +586,19 @@ class App
 		$result = array();
 
 		$pallets_ids = ArrayUtils::getItemsProperty($pallet_array,'id');
-		$pallet_content_array = pallet_content::search(array('pallet_id'=>$pallets_ids),false, 'id');
+		$pallet_content_array = pallet_content::search(array('pallet_id'=>$pallets_ids,'status'=>'ACTIVE'),false, 'id');
 
-		$containers_ids	= ArrayUtils::getItemsProperty($pallet_content_array,'container_id',true);
-		$container_array	= container::search(array('id'=>$containers_ids),false,'id');
-		$container_content_array	= container_content::search(array('container_id'=>$containers_ids),false,'id');
+		$boxes_ids		= ArrayUtils::getItemsProperty($pallet_content_array,'box_id',true);
+		$box_array		= box::search(array('id'=>$boxes_ids),false,'id');
+		$box_content_array		= box_content::search(array('box_id'=>$boxes_ids),false,'id');
 
-		$item_ids			= ArrayUtils::getItemsProperty($container_content_array,'item_id',true);
+		$item_ids				 = ArrayUtils::getItemsProperty($box_content_array,'item_id',true);
 		$item_array			= item::search(array('id'=>$item_ids),false,'id');
 		$category_ids		= ArrayUtils::getItemsProperty($item_array,'category_id',true);
 		$category_array		= category::search(array('id'=>$category_ids),false,'id');
 
 		$pallet_content_grouped = ArrayUtils::groupByIndex($pallet_content_array,'pallet_id');
-		$container_content_grouped = ArrayUtils::groupByIndex($container_content_array,'container_id');
+		$box_content_grouped = ArrayUtils::groupByIndex($box_content_array,'box_id');
 
 		foreach( $pallet_array as $pallet )
 		{
@@ -509,19 +608,19 @@ class App
 
 			foreach($pc_array as $pallet_content )
 			{
-				$container = $container_array[ $pallet_content['container_id'] ];
+				$box = $box_array[ $pallet_content['box_id'] ];
 				//Container Content Array cc_array
-				$cc_array = isset( $container_content_grouped[ $container['id' ] ] ) ? $container_content_grouped[ $container['id' ] ] : array();
+				$cc_array = isset( $box_content_grouped[ $box['id' ] ] ) ? $box_content_grouped[ $box['id' ] ] : array();
 
 				$cc_info = array();
 
-				foreach($cc_array as $container_content )
+				foreach($cc_array as $box_content )
 				{
-					$item = $item_array[ $container_content['item_id'] ];
+					$item = $item_array[ $box_content['item_id'] ];
 					$category = $category_array[ $item['category_id'] ];
 
 					$cc_info[] = array(
-						'container_content'=>$container_content,
+						'box_content'=>$box_content,
 						'item'=> $item,
 						'category'=> $category,
 					);
@@ -529,7 +628,7 @@ class App
 
 				$content_info[] = array(
 					'pallet_content' => $pallet_content,
-					'container'=> $container,
+					'box'=> $box,
 					'content'=> $cc_info
 				);
 			}
@@ -554,54 +653,70 @@ class App
 		return $result;
 	}
 
-	static function getContainerInfo($container_array,$_as_dictionary=FALSE)
-	{
-		$container_props	= ArrayUtils::getItemsProperties($container_array,'id','production_item_id');
-		//$production_item_array	= production_item::search(array('id'=>$container_props['production_item_id']),false,'id');
-		$container_content_array	= container_content::search(array('container_id'=>$container_props['id']),false,'id');
 
-		$serial_number_array	= serial_number::search(array('container_id'=>$container_props['id']),false,'container_id');
+	static function getBoxInfo($box_array,$_as_dictionary=FALSE)
+	{
+		$box_props		= ArrayUtils::getItemsProperties($box_array,'id','production_item_id');
+		//$production_item_array	= production_item::search(array('id'=>$container_props['production_item_id']),false,'id');
+		$tmp_box_content_array	= box_content::search(array('box_id'=>$box_props['id']),false,'id');
+
+		$serial_number_array	= serial_number::search(array('box_id'=>$box_props['id']),false,'box_id');
 		$item_ids				= ArrayUtils::getItemsProperty( $serial_number_array,'item_id');
 		$item_array				= item::search(array('id'=>$item_ids),false,'id');
 		$category_ids			= ArrayUtils::getItemsProperty($item_array,'category_id');
 		$category_array			= category::search(array('id'=>$category_ids),false,'id');
+		$pallet_content_array	 = pallet_content::search(array('box_id'=>$box_props['id'],'status'=>'ACTIVE'),false,'box_id');
+		$box_content_array = ArrayUtils::removeElementsWithValueInProperty($tmp_box_content_array,'qty',0);
 
-		$container_content_group	= ArrayUtils::groupByIndex($container_content_array,'container_id');
+		$box_content_group		= ArrayUtils::groupByIndex($box_content_array,'box_id');
 
 		$result = array();
 
-		foreach($container_array as $container)
+		foreach($box_array as $box)
 		{
 			$content_result = array();
-			$cc_array = isset( $container_content_group[ $container['id'] ] ) ?	$container_content_group[ $container['id'] ] : array();
+			$cc_array = isset( $box_content_group[ $box['id'] ] ) ? $box_content_group[ $box['id'] ] : array();
 
-			foreach($cc_array as $container_content)
+			foreach($cc_array as $box_content)
 			{
-				$item		= $item_array[ $container_content['item_id'] ];
+				$item		 = $item_array[ $box_content['item_id'] ];
 				$category	= $category_array[ $item['category_id'] ];
 
 				$content_result[] = array(
 					'item'				=> $item,
 					'category'			=> $category,
-					'container_content'	=> $container_content
+					'box_content'	 => $box_content
 				);
 			}
 
+			$pallet_content = isset( $pallet_content_array[ $box['id'] ] ) ? $pallet_content_array[ $box['id'] ] : null;
+
 			if( $_as_dictionary )
 			{
-				$result[ $container['id'] ] = array(
-					'container'		=> $container,
-					'serial_number'	=> $serial_number_array[ $container['id'] ],
-					'content'		=> $content_result
+
+				$box_info = array(
+					'box'		 => $box,
+					'serial_number' => $serial_number_array[ $box['id'] ],
+					'content'			 => $content_result,
 				);
+
+				if( $pallet_content )
+					$box_info['pallet_content'] = $pallet_content;
+
+				$result[ $box['id'] ] =	$box_info;
 			}
 			else
 			{
-				$result [] = array(
-					'container'		=> $container,
-					'serial_number'	=> $serial_number_array[ $container['id'] ],
+				$box_info = array(
+					'box'		 => $box,
+					'serial_number' => $serial_number_array[ $box['id'] ],
 					'content'		=> $content_result
 				);
+
+				if( $pallet_content )
+					$box_info['pallet_content'] = $pallet_content;
+
+				$result [] =	$box_info;
 			}
 		}
 		return $result;
@@ -611,13 +726,13 @@ class App
 		$shipping_ids 	= ArrayUtils::getItemsProperty($shipping_array,'id', true);
 		$shipping_item_array	= shipping_item::search(array('shipping_id'=>$shipping_ids),false,'id');
 
-		$shipping_item_props	= ArrayUtils::getItemsProperties($shipping_item_array,'pallet_id','container_id','item_id');
+		$shipping_item_props	= ArrayUtils::getItemsProperties($shipping_item_array,'pallet_id','box_id','item_id');
 
 		$pallet_array			= pallet::search(array('id'=>$shipping_item_props['pallet_id']),false,'id');
-		$container_array		= container::search(array('id'=>$shipping_item_props['container_id']),false,'id');
+		$box_array			= box::search(array('id'=>$shipping_item_props['box_id']),false,'id');
 
 		$pallets_info_array			= app::getPalletInfo( $pallet_array, TRUE );
-		$container_info_array		= app::getContainerInfo( $container_array, TRUE );
+		$box_info_array	 = app::getBoxInfo( $box_array, TRUE );
 
 		$items_array = item::search(array('id'=>$shipping_item_props['item_id']),false, 'id');
 		$category_ids		= ArrayUtils::getItemsProperty($items_array,'category_id');
@@ -641,7 +756,7 @@ class App
 			{
 				$pallet_info = null;
 				$pallet_info = $si['pallet_id'] ? $pallets_info_array[ $si['pallet_id'] ] : null;
-				$container_info = $si['container_id'] ? $container_info_array[ $si['container_id'] ] : null;
+				$box_info = $si['box_id'] ? $box_info_array[ $si['box_id'] ] : null;
 
 				$item = $si['item_id'] ? $items_array[ $si['item_id'] ]: null;
 				$category = $si['item_id'] ? $category_array[ $item['category_id'] ] : null;
@@ -649,7 +764,7 @@ class App
 				$items_info[]= array(
 					'shipping_item'=>$si,
 					'pallet_info'=>$pallet_info,
-					'container_info'=>$container_info,
+					'box_info'=>$box_info,
 					'item'=> $item,
 					'category'=>$category,
 				);
@@ -745,7 +860,7 @@ class App
 
 		if( !$price )
 		{
-			throw new ValidationException('El precio del articulo "'.$item->name.'" no se encontro');
+			throw new ValidationException('El precio del artículo "'.$item->name.'" no se encontro');
 		}
 
 		$store = store::get( $order->store_id );
@@ -756,6 +871,8 @@ class App
 
 		$order_item->item_id		= $order_item_values['item_id'];
 		$order_item->qty			= $order_item_values['qty'];
+		$order_item->return_required	= $order_item_values['return_required'];
+
 		$order_item->price			= $price->price;
 		$order_item->total			= $price->price*$order_item->qty;
 		$order_item->subtotal		= sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
@@ -811,7 +928,7 @@ class App
 			$notification_info['data'] = array('object_type'=>$push_notification->object_type, 'object_id'=>''.$push_notification->object_id );
 		}
 
-		if( count( $tokens ) == 1  )
+		if( count( $tokens ) == 1	)
 		{
 			$notification_info['to'] = $notification_token_array[0]->token;
 		}
@@ -824,9 +941,9 @@ class App
 
 		if( $push_notification->icon_image_id )
 		{
-			$notification_info['notification']['image']  = app::$endpoint.'/image.php?id='.$push_notification->icon_image_id;
+			$notification_info['notification']['image']	= app::$endpoint.'/image.php?id='.$push_notification->icon_image_id;
 			//Si no funcionas para push
-			$notification_info['webpush']['headers']  = array( 'image'=>app::$endpoint.'/image.php?id='.$push_notification->icon_image_id);
+			$notification_info['webpush']['headers']	= array( 'image'=>app::$endpoint.'/image.php?id='.$push_notification->icon_image_id);
 		}
 
 		if( $push_notification->link )
@@ -844,8 +961,6 @@ class App
 		$curl->execute();
 		//error_log('Request payload ==>'.PHP_EOL.$payload);
 
-		//error_log('Response code '.$curl->status_code );
-
 		if( $curl->status_code >= 200 && $curl->status_code <300 )
 		{
 			$push_notification->response = $curl->raw_response;
@@ -854,6 +969,30 @@ class App
 		else
 		{
 
+		}
+	}
+
+
+	static function updateBalances($bank_account)
+	{
+		$sql = 'SELECT * FROM bank_movement WHERE bank_account_id = "'.DBTable::escape($bank_account->id).'" ORDER BY paid_date ASC FOR UPDATE';
+
+		$bank_movement_array = bank_movement::getArrayFromQuery($sql);
+		$balance = 0;
+		foreach($bank_movement_array as $bank_movement)
+		{
+
+			if( $bank_movement->type == "income")
+			{
+				$balance += $bank_movement->amount;
+			}
+			else
+			{
+				$balance -= $bank_movement->amount;
+			}
+
+			$bank_movement->balance = "$balance";
+			$bank_movement->update('balance');
 		}
 	}
 }
