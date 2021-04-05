@@ -271,6 +271,7 @@ class order extends \akou\DBTable
 	var $price_type_id;
 	var $currency_id;
 	var $status;
+	var $paid_status;
 	var $tag;
 	var $attended_status;
 	var $paid_timetamp;

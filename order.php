@@ -85,7 +85,7 @@ class Service extends SuperRest
 	function batchUpdate($array)
 	{
 
-		$props = order::getAllPropertiesExcept('store_id','total','subtotal','tax','amount_paid','created_by_user_id','updated_by_user_id','created','updated');
+		$props = order::getAllPropertiesExcept('store_id','delivery_status','paid_status','total','subtotal','tax','amount_paid','created_by_user_id','updated_by_user_id','created','updated');
 
 		foreach($array as $order )
 		{
