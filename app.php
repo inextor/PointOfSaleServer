@@ -915,12 +915,14 @@ class App
 		if( !$store )
 			throw new ValidationException('No se encontrol el almacen');
 
+		error_log('Price is'.print_r( $price, true ));
 
 		$order_item->item_id		= $order_item_values['item_id'];
 		$order_item->qty			= $order_item_values['qty'];
 		$order_item->return_required	= $order_item_values['return_required'];
 
 		$order_item->price			= $price->price;
+		$order_item->price_id		= $price->id;
 		$order_item->total			= $price->price*$order_item->qty;
 		$order_item->subtotal		= sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
 		$order_item->unitary_price	= $order_item->subtotal/$order_item->qty;

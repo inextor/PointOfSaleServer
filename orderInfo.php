@@ -29,7 +29,7 @@ class Service extends SuperRest
 		$props			= ArrayUtils::getItemsProperties('id','client_user_id','cashier_user_id');
 		$user_ids		= array_merge($props['client_user_id'],$props['cashier_user_id'] );
 		$user_array		= user::search(array('id'=>$user_ids),false,'id');
-		$order_item_array		= order_item::search(array('order_id'=>$props['id']),false,'id')
+		$order_item_array		= order_item::search(array('order_id'=>$props['id']),false,'id');
 		$items_props	= ArrayUtils::getItemsProperties($order_item,'item_id','item_option_id','item_extra_id');
 
 		$item_array			= item::search(array('id'=>$items_props['item_id']),false,'id');
