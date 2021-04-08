@@ -85,19 +85,22 @@ class Service extends SuperRest
 	function batchUpdate($array)
 	{
 
-		$props = order::getAllPropertiesExcept('store_id','name','delivery_status','paid_status','total','subtotal','tax','amount_paid','created_by_user_id','updated_by_user_id','created','updated');
+		$props = order::getAllPropertiesExcept('store_id','delivery_status','paid_status','total','subtotal','tax','amount_paid','created_by_user_id','updated_by_user_id','created','updated');
+		$this->debug('Props',$props);
 
 		$results = array();
 
-		foreach($array as $order )
+		foreach($array as $order_data )
 		{
-			$order = order::get( $order['id'] );
-			$order->assignFromArray($order,$props);
+			$order = order::get( $order_data['id'] );
+			$order->assignFromArray($order_data,$props);
+
 
 			if( !$order->update( $props ) )
 			{
 				throw new SystemException('Ocurrio un error por favor intetar mas tarde. '.$order->getError());
 			}
+			error_log($order->getLastQuery());
 
 			$results[]= $order->toArray();
 		}
