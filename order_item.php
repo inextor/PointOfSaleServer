@@ -17,6 +17,7 @@ class Service extends SuperRest
 		session_start();
 		App::connect();
 		$this->setAllowHeader();
+		$this->is_debug = true;
 
 		return $this->genericGet("order_item");
 	}
@@ -65,7 +66,7 @@ class Service extends SuperRest
 				throw new ValidationException('Please login');
 
 			$is_assoc	= $this->isAssociativeArray( $params );
-			$result		= $this->batchUpdate( $is_assoc  ? array($params) : $params );
+			$result		= $this->batchInsert( $is_assoc  ? array($params) : $params );
 			DBTable::commit();
 			return $this->sendStatus( 200 )->json( $is_assoc ? $result[0] : $result );
 		}
@@ -89,32 +90,6 @@ class Service extends SuperRest
 			$results[] = app::saveOrderItem($oi)->toArray();
 		}
 	}
-
-	function batchUpdate($array)
-	{
-		$insert_with_ids = false;
-		return $this->genericUpdate($array, "order_item", $insert_with_ids );
-	}
-
-	/*
-	function delete()
-	{
-		try
-		{
-			return $this->genericDelete("order_item");
-		}
-		catch(LoggableException $e)
-		{
-			DBTable::rollback();
-			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
-		}
-		catch(Exception $e)
-		{
-			DBTable::rollback();
-			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
-		}
-	}
-	*/
 }
 $l = new Service();
 $l->execute();

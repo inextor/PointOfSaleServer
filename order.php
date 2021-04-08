@@ -85,7 +85,9 @@ class Service extends SuperRest
 	function batchUpdate($array)
 	{
 
-		$props = order::getAllPropertiesExcept('store_id','delivery_status','paid_status','total','subtotal','tax','amount_paid','created_by_user_id','updated_by_user_id','created','updated');
+		$props = order::getAllPropertiesExcept('store_id','name','delivery_status','paid_status','total','subtotal','tax','amount_paid','created_by_user_id','updated_by_user_id','created','updated');
+
+		$results = array();
 
 		foreach($array as $order )
 		{
@@ -96,7 +98,10 @@ class Service extends SuperRest
 			{
 				throw new SystemException('Ocurrio un error por favor intetar mas tarde. '.$order->getError());
 			}
+
+			$results[]= $order->toArray();
 		}
+		return $results;
 	}
 
 	function batchInsert($array)
