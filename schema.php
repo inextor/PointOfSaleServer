@@ -289,8 +289,6 @@ class order extends \akou\DBTable
 	var $suburb;
 	var $city;
 	var $state;
-	var $zipcode;
-	var $name;
 	var $created;
 	var $updated;
 }
