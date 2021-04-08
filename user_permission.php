@@ -120,8 +120,6 @@ class Service extends SuperRest
 				{
 					throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$user_permission->getError());
 				}
-
-				error_log( $user_permission->getLastQuery());
 			}
 			else
 			{
@@ -132,8 +130,27 @@ class Service extends SuperRest
 				{
 					throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$user_permission->getError());
 				}
-				error_log( $user_permission->getLastQuery());
 			}
+
+			if( $notification_token )
+			{
+				$push_notification = new push_notification();
+				$push_notification->user_id = $user_permission->user_id;
+				$push_notification->title = 'Permisos fueron modificados';
+				$push_notification->object_type = 'user_permission';
+				$push_notification->object_id	= $user_permission->user_id;
+
+				if( !$push_notification->insert() )
+				{
+					error_log('Ocurrio un error no grave en los permisos '.$push_notification->getLastQuery());
+				}
+				else
+				{
+					app::sendNotification($push_notification);
+				}
+			}
+
+
 			$result[] = $user_permission->toArray();
 		}
 
