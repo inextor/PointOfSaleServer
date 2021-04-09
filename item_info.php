@@ -48,8 +48,8 @@ class Service extends SuperRest
 		$item_props= ArrayUtils::getItemsProperties($item_array, 'id','category_id');
 		$category_array = category::search(array('id'=>$item_props['category_id']),false,'id');
 
-		$item_extra_array	= item_extra::searchGroupByIndex(array('item_id'=>$item_props['id']),false,'item_id');
-		$item_option_array	= item_option::searchGroupByIndex(array('item_id'=>$item_props['id']),false,'item_id');
+		//$item_extra_array		= item_extra::searchGroupByIndex(array('item_id'=>$item_props['id'],'status'=>'ACTIVE'),false,'item_id');
+		$item_option_array		= item_option::searchGroupByIndex(array('item_id'=>$item_props['id'],'status'=>'ACTIVE'),false,'item_id');
 		$item_attributes_array	= item_attribute::searchGroupByIndex(array('item_id'=>$item_props['id']),false,'item_id');
 
 		$result = array();
@@ -78,7 +78,7 @@ class Service extends SuperRest
 
 			$prices		= isset( $price_array[ $item['id'] ] ) ? $price_array[ $item['id'] ] : array();
 			$attributes	= isset( $item_attributes_array[ $item['id'] ] )? $item_attributes_array[ $item['id'] ] : array();
-			$extras		= isset( $item_extra_array[ $item['id'] ] )? $item_extra_array[ $item['id'] ] : array();
+			//$extras		= isset( $item_extra_array[ $item['id'] ] )? $item_extra_array[ $item['id'] ] : array();
 			$options	= isset( $item_option_array[ $item['id'] ] )? $item_option_array[ $item['id'] ] : array();
 
 			$result[] = array(
@@ -87,7 +87,7 @@ class Service extends SuperRest
 				'records'=>$stock_records,
 				'prices'=> $prices,
 				'options'=> $options,
-				'extras'=> $extras,
+				//'extras'=> $extras,
 				'attributes'=> $attributes
 			);
 		}
@@ -169,9 +169,9 @@ class Service extends SuperRest
 				throw new SystemException('Ocurrio un error por favor intentar mas tarde');
 			}
 
-			$this->updateAttributes($item, $params['attributes']);
-			$this->updateItemExtra($item, $params['extras']);
-			$this->updateOptions( $item, $params['options']);
+			$this->updateAttributes( $item, $params['attributes'] );
+			$this->updateItemExtra( $item, $params['extras'] );
+			$this->updateOptions( $item, $params['options'] );
 
 			$result[] = $item->toArray();
 		}
@@ -195,7 +195,7 @@ class Service extends SuperRest
 			}
 
 			$this->updateAttributes($item, $params['attributes']);
-			$this->updateItemExtra($item, $params['extras']);
+			//$this->updateItemExtra($item, $params['extras']);
 			$this->updateOptions( $item, $params['options']);
 
 			$result[] = $item->toArray();
@@ -203,23 +203,34 @@ class Service extends SuperRest
 		return $result;
 	}
 
-	function updateItemExtra($item, $item_extra_params )
+	function updateItemExtra($item_option, $item_extra_params )
 	{
 		if( empty( $item_extras_params )  )
 			return array();
 
+		$props	= item_extra::getAllPropertiesExcept('id','created','updated','item_option_id');
+
+		$result = array();
+
 		foreach($item_extra_params as $params )
 		{
 			$item_extra = new item_extra();
-			$item_extra->assignFromArray($params);
-			$item_extra->item_id = $item->id;
+
+			if( !empty( $params['item_extra']['id'] ) )
+			{
+				$item_extra = item_extra::get( $params['item_extra']['id'] );
+
+				if( $item_extra->item_option_id !== $item_option->id )
+				{
+					throw new ValidationException('El id de la opcion no corresponde');
+				}
+			}
+
+			$item_extra->assignFromArray( $params['item_extra'], $props );
+			$item_extra->item_option_id = $item_option->id;
 
 			if( $item_extra->id  )
 			{
-				if( $item_extra->item_id == $item->id )
-				{
-					throw new ValidationException('El id del item no corresponde');
-				}
 				if( !  $item_extra->updateDb() )
 				{
 					throw new ValidationException('Ocurrio un error por favor intentar mas tarde');
@@ -229,7 +240,20 @@ class Service extends SuperRest
 			{
 				throw new ValidationException('Ocurrio un error por favor intentar mas tarde');
 			}
+
+			$result[] = $item_extra->toArray();
 		}
+
+		$ids = ArrayUtils::getItemsProperty($result,'id');
+
+		if( !empty( $ids ) )
+		{
+			$sql = 'UPDATE item_extra SET status = "DELETED" WHERE item_option_id = "'.$item_option->id.'" AND id NOT IN('.DBTable::escapeArrayValues( $ids ).')';
+			error_log('Sql Remove items '.$sql );
+			DBTable::query($sql);
+		}
+
+		return $result;
 	}
 
 	function updateOptions($item, $item_option_params )
@@ -237,10 +261,12 @@ class Service extends SuperRest
 		if( empty( $item_options_params )  )
 			return array();
 
-		foreach($item_option_params as $params)
+		$results = array();
+
+		foreach( $item_option_params as $params)
 		{
 			$item_option = new item_option();
-			$item_option->assignFromArray($params);
+			$item_option->assignFromArray($params['option']);
 			$item_option->item_id = $item->id;
 
 			if( $item_option->id  )
@@ -258,6 +284,18 @@ class Service extends SuperRest
 			{
 				throw new ValidationException('Ocurrio un error por favor intentar mas tarde');
 			}
+
+			$this->updateItemExtra( $item_option, $params['extras'] );
+			$results[] = $item_option->toArray();
+		}
+
+		$ids = ArrayUtils::getItemsProperty($results,'id');
+
+		if( !empty( $ids ) )
+		{
+			$sql = 'UPDATE item_option SET status = "DELETED" WHERE item_id = "'.$item->id.'" AND id NOT IN('.DBTable::escapeArrayValues( $ids ).')';
+			error_log('Sql Remove option items '.$sql );
+			DBTable::query($sql);
 		}
 	}
 
