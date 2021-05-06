@@ -18,6 +18,7 @@ use \akou\SystemException;
 use \akou\ValidationException;
 use \akou\ArrayUtils;
 use AKOU\Curl;
+use \akou\SessionException;
 
 date_default_timezone_set('UTC');
 //error_reporting(E_ERROR | E_PARSE);
@@ -45,7 +46,14 @@ class App
 	{
 		DBTable::$_parse_data_types = TRUE;
 
-		 if( !isset( $_SERVER['SERVER_ADDR'])	|| $_SERVER['SERVER_ADDR'] =='127.0.0.1' || $_SERVER['SERVER_ADDR'] == '2806:1000:8201:71d:42b0:76ff:fed9:5901')
+		$test_servers = array('127.0.0.1','192.168.0.2','2806:1000:8201:71d:42b0:76ff:fed9:5901');
+
+		$domain = app::getCustomHttpReferer();
+
+		//error_log($domain);
+		$is_test_server = strpos($domain,'test') !== false;
+
+		if( isset( $_SERVER['SERVER_ADDR']) && in_array($_SERVER['SERVER_ADDR'],$test_servers ) || $is_test_server )
 		{
 				$__user		 = 'root';
 				$__password	 = 'asdf';
@@ -69,10 +77,10 @@ class App
 				$__db			= 'archbel';
 				$__host			= '127.0.0.1';
 				$__port			= '3306';
-
-				app::$image_directory = './user_images';
 				app::$attachment_directory = './user_files';
 				app::$endpoint = 'http://'.$_SERVER['SERVER_ADDR'].'/PointOfSale/api';
+				app::$image_directory = './user_images';
+				app::$is_debug	= false;
 		}
 
 		$mysqli = new \mysqli($__host, $__user, $__password, $__db, $__port );
@@ -263,7 +271,105 @@ class App
 			return $stock_record_array[0];
 
 		return null;
-}
+	}
+
+	static function addSerialNumberToMerma($serial_number,$user,$note)
+	{
+		$box_content = box_content::searchFirst(array('qty>'=>0,'item_id'=>$serial_number->item_id,'box_id'=>$serial_number->box_id));
+
+		if( $box_content )
+		{
+			error_log('en box_content');
+			app::removeItemFromBoxContent($box_content,1,$user,$note);
+		}
+		else
+		{
+			error_log('en removeStock');
+			app::removeStock($serial_number->item_id, $serial_number->store_id, $user->id, 0, $note);
+		}
+
+		$serial_number->status = 'DESTROYED';
+
+		if( ! $serial_number->update('status') )
+		{
+			error_log('Ocurrio aqui');
+			throw new SystemException('Ocurrio un error Por favor intentar mas tarde. '.$serial_number->getError());
+		}
+	}
+
+	static function removeItemFromBoxContent($box_content, $qty, $user, $note)
+	{
+		$box_content->qty -= $qty;
+
+		if( $box_content->qty < 0 )
+			$box_content->qty = 0;
+
+		$box = box::get( $box_content->box_id );
+		app::removeStock($box_content->item_id, $box->store_id, $user->id, $qty, $note);
+
+		if( !$box_content->update('qty') )
+		{
+			throw new SystemException('Ocurrio un error por favor intentar mas tarde'.$box_content->getError());
+		}
+	}
+
+	static function addItemsToBox($box_id, $item_id, $qty, $user_id, $note )
+	{
+		$box = box::get($box_id);
+		$box_content = box_content::searchFirst(array('box_id'=>$box_id, 'item_id'=>$item_id),true);
+
+		if( !$box_content )
+		{
+			$box_content = new box_content();
+			$box_content->box_id = $box_id;
+			$box_content->initial_qty = $qty;
+			$box_content->qty	= $qty;
+
+			if( !$box_content->insert() )
+			{
+				throw new SystemException('Ocurrio un error por favor intente mas tarde '.$box_content->getError());
+			}
+		}
+		else
+		{
+			$box_content->qty += $qty;
+			if( !$box_content->update('qty') )
+			{
+				throw new SystemException('Ocurrio un error por favor intente mas tarde '.$box_content->getError());
+			}
+		}
+
+		app::addStock($item_id,$box->store_id,$user_id,$qty,$note);
+	}
+
+	//Esto es solo para ajustar el stock, no para remover ni agregar
+	static function adjustBoxContent($box_content,$qty,$user,$note='Se agrego merma por manejo de inventario')
+	{
+		if( $box_content->qty > $qty )
+		{
+			$box = box::get( $box_content->box_id );
+
+			if( $box == null )
+				throw new SystemException('Ocurrio un error, no se encontro la caja');
+
+			static::addMerma(null,$box->id,$box->store_id,$box_content->item_id,$box_content->qty - $qty, $user->id,$note);
+			$box_content->qty = $qty;
+
+			if( !$box_content->update('qty') )
+			{
+				throw new ValidationException('Ocurrio un error por favor intentar mas tarde, '.$box_content->getError());
+			}
+		}
+		else
+		{
+			$box_content->qty = $qty;
+
+			if( $box_content->update('qty') )
+			{
+				throw new SystemException('No se pudo ajustar el inventario',$box_content->getError());
+			}
+		}
+	}
 
 	static function addStocktakeMerma($stocktake,$box,$item_id,$qty,$user,$note)
 	{
@@ -306,6 +412,24 @@ class App
 			throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$merma->getError());
 
 		app::removeStock($merma->item_id,$stocktake->store_id,$user->id,$merma->qty,'Merma: '.$note);
+
+	}
+
+	static function addMerma($stocktake_id,$box_id,$store_id,$item_id,$qty,$user_id,$note)
+	{
+		$merma = new merma();
+		$merma->box_id			= $box_id;
+		$merma->stocktake_id	= $stocktake_id;
+		$merma->item_id			= $item_id;
+		$merma->store_id		= $store_id;
+		$merma->qty				= $qty;
+		$merma->note			= $note;
+		$merma->created_by_user_id	=	 $user_id;
+
+		if(!$merma->insert())
+		{
+			throw new SystemException('Ocurrio un error al registrar la merma por favor intentar mas tarde. '.$merma->getError());
+		}
 	}
 
 	static function addBoxContentMerma($stocktake,$box,$box_content,$note,$user)
@@ -705,15 +829,15 @@ class App
 	{
 		$box_props		= ArrayUtils::getItemsProperties($box_array,'id','production_item_id');
 		//$production_item_array	= production_item::search(array('id'=>$container_props['production_item_id']),false,'id');
-		$tmp_box_content_array	= box_content::search(array('box_id'=>$box_props['id']),false,'id');
 
+		$box_content_array	= box_content::search(array('box_id'=>$box_props['id'],'qty>'=>0),false,'id');
 		$serial_number_array	= serial_number::search(array('box_id'=>$box_props['id']),false,'box_id');
-		$item_ids				= ArrayUtils::getItemsProperty( $serial_number_array,'item_id');
+
+		$item_ids				= ArrayUtils::getItemsProperty( $box_content_array,'item_id');
 		$item_array				= item::search(array('id'=>$item_ids),false,'id');
 		$category_ids			= ArrayUtils::getItemsProperty($item_array,'category_id');
 		$category_array			= category::search(array('id'=>$category_ids),false,'id');
 		$pallet_content_array	 = pallet_content::search(array('box_id'=>$box_props['id'],'status'=>'ACTIVE'),false,'box_id');
-		$box_content_array = ArrayUtils::removeElementsWithValueInProperty($tmp_box_content_array,'qty',0);
 
 		$box_content_group		= ArrayUtils::groupByIndex($box_content_array,'box_id');
 
@@ -743,7 +867,7 @@ class App
 
 				$box_info = array(
 					'box'		 => $box,
-					'serial_number' => $serial_number_array[ $box['id'] ],
+					//'serial_number'	=> $serial_number_array[ $box['id'] ],
 					'content'			 => $content_result,
 				);
 
@@ -756,7 +880,7 @@ class App
 			{
 				$box_info = array(
 					'box'		 => $box,
-					'serial_number' => $serial_number_array[ $box['id'] ],
+					//'serial_number' => $serial_number_array[ $box['id'] ],
 					'content'		=> $content_result
 				);
 
@@ -796,7 +920,6 @@ class App
 				? $shipping_item_grouped[ $shipping['id'] ]
 				: array();
 
-
 			$items_info = array();
 
 			foreach($shipping_items as $si)
@@ -825,6 +948,7 @@ class App
 
 		return $result;
 	}
+
 	static function updateOrderTotal($order_id)
 	{
 		$order = order::get( $order_id );
@@ -840,7 +964,8 @@ class App
 			{
 				$store = store::get($order->store_id );
 
-				$price = price::searchFirst(array('price_type'=>$order->price_type_id,'item_id'=>$order_item->item_id,'store_id'=>$store->id));
+				error_log('Price type is	 ==============>'.$order->price_type_id);
+				$price = price::searchFirst(array('price_type_id'=>$order->price_type_id,'item_id'=>$order_item->item_id,'store_id'=>$store->id));
 
 				if( $price == NULL )
 				{
@@ -850,20 +975,34 @@ class App
 				}
 
 				$order_item->price			= $price->price;
-				$order_item->total			= $price->price*$order_item->qty;
-				$order_item->subtotal		= sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
-				$order_item->unitary_price	= $order_item->subtotal/$order_item->qty;
-				$order_item->tax 			= sprintf('%0.6f',$order_item->total-$order_item->subtotal);
+
+				if( $order_item->is_free_of_charge == 'YES' )
+				{
+					$order_item->total			= 0;
+					$order_item->subtotal		 	= 0;
+					$order_item->tax			= 0;
+					$order_item->unitary_price	= $price->price;
+				}
+				else
+				{
+					$order_item->total			= $price->price*$order_item->qty;
+					$order_item->subtotal		= sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
+					$order_item->tax 			= sprintf('%0.6f',$order_item->total-$order_item->subtotal);
+					$order_item->unitary_price		= $order_item->subtotal/$order_item->qty;
+				}
 
 				if(!$order_item->update('price','total','subtotal','tax','unitary_price') )
 				{
 					throw new SystemException('Ocurrio un error por favor intente mas tarde Codigo: utv2');
 				}
+
 				$order->total			+= $order_item->total;
 				$order->pending_amount	= $order->total;
 				$order->subtotal		+= $order_item->subtotal;
 				$order->tax				+= $order_item->tax;
 			}
+
+			$order->total		+= $order->shipping_cost;
 		}
 
 
@@ -893,7 +1032,13 @@ class App
 		if( $order == null )
 			throw new ValidationException('No se encontro la orden');
 
-		$order_item	= order_item::searchFirst(array( 'item_id'=> $item->id ,'order_id'=> $order_item_values['order_id']));
+	//	error_log('checking order item_values'.print_r( $order_item_values,true ));
+
+		$search_item_array = array( 'item_id'=> $item->id ,'order_id'=> $order_item_values['order_id'], 'is_free_of_charge'=>$order_item_values['is_free_of_charge']);
+		$sql		= order_item::getSearchFirstSql( $search_item_array );
+		$order_item	 = order_item::searchFirst( $search_item_array );
+
+//		error_log('Sql search'. $sql );
 
 		if( empty( $order_item) )
 		{
@@ -918,13 +1063,26 @@ class App
 		$order_item->item_id		= $order_item_values['item_id'];
 		$order_item->qty			= $order_item_values['qty'];
 		$order_item->return_required	= empty($order_item_values['return_required']) ? 'NO' : $order_item_values['return_required'];
+		$order_item->is_free_of_charge = empty( $order_item_values['is_free_of_charge'] ) ? 'NO' : $order_item_values['is_free_of_charge'] ;
 
-		$order_item->price			= $price->price;
-		$order_item->price_id		= $price->id;
-		$order_item->total			= $price->price*$order_item->qty;
-		$order_item->subtotal		= sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
-		$order_item->unitary_price	= $order_item->subtotal/$order_item->qty;
-		$order_item->tax				= sprintf('%0.6f',$order_item->total-$order_item->subtotal);
+		if( $order_item->is_free_of_charge == 'YES' )
+		{
+			$order_item->price			= $price->price;
+			$order_item->price_id		= $price->id;
+			$order_item->total			= 0;
+			$order_item->subtotal		 	= 0;
+			$order_item->unitary_price	= $price->price;//sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
+			$order_item->tax			= 0;//sprintf('%0.6f',$order_item->total-$order_item->subtotal);
+		}
+		else
+		{
+			$order_item->price			= $price->price;
+			$order_item->price_id		= $price->id;
+			$order_item->total			= $price->price*$order_item->qty;
+			$order_item->subtotal		= sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
+			$order_item->unitary_price	= $order_item->subtotal/$order_item->qty;
+			$order_item->tax			= sprintf('%0.6f',$order_item->total-$order_item->subtotal);
+		}
 
 		if( empty( $order_item->id ) )
 		{
@@ -938,6 +1096,8 @@ class App
 			throw new SystemException('Ocurrio un error por favor intentar mas tarde',print_r( $order_item->toArray(),true));
 		}
 
+		app::updateOrderTotal($order_item->order_id);
+
 		return $order_item;
 	}
 
@@ -947,6 +1107,9 @@ class App
 
 		$notification_token_array = notification_token::search(array('user_id'=>$user_ids_array,'status'=>"ACTIVE"));
 		$tokens = ArrayUtils::getItemsProperty($notification_token_array,'token', true );
+
+		if( app::$is_debug )
+			return;
 
 		if( empty( $notification_token_array ) )
 		{
