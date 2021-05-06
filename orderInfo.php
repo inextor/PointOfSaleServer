@@ -20,22 +20,32 @@ class Service extends SuperRest
 		session_start();
 		App::connect();
 		$this->setAllowHeader();
+		$user = app::getUserFromSession();
+
+		if( !$user )
+			return $this->sendStatus( 401 )->json(array("error"=>'Por favor iniciar sesion'));
 
 		return $this->genericGet("order");
 	}
 
 	function getInfo($order_array )
 	{
-		$props			= ArrayUtils::getItemsProperties('id','client_user_id','cashier_user_id');
-		$user_ids		= array_merge($props['client_user_id'],$props['cashier_user_id'] );
+		$order_props		= ArrayUtils::getItemsProperties($order_array,'id','store_id','client_user_id','cashier_user_id','shipping_address_id','billing_address_id');
+
+		$store_array		= store::search(array('id'=>$order_props['store_id']), false, 'id');
+		$user_ids			= array_merge($order_props['client_user_id'],$order_props['cashier_user_id']);
 		$user_array		= user::search(array('id'=>$user_ids),false,'id');
-		$order_item_array		= order_item::search(array('order_id'=>$props['id']),false,'id');
-		$items_props	= ArrayUtils::getItemsProperties($order_item,'item_id','item_option_id','item_extra_id');
+		$order_item_array		= order_item::search(array('order_id'=>$order_props['id']),false,'id');
+		$order_item_props	= ArrayUtils::getItemsProperties($order_item_array,'id','item_id','item_option_id','item_extra_id');
 
-		$item_array			= item::search(array('id'=>$items_props['item_id']),false,'id');
-		$item_option_array	= item_options::search(array('id'=>$items_props['item_option_id']),false, 'id');
-		$item_extra_array	= item_extras::search(array('id'=>$items_props['item_extra_id']),false, 'id');
+		$item_array			= item::search(array('id'=>$order_item_props['item_id']),false,'id');
+		$item_option_array	= item_options::search(array('id'=>$order_item_props['item_option_id']),false, 'id');
+		$item_extra_array	= item_extras::search(array('id'=>$order_item_props['item_extra_id']),false, 'id');
 
+		$category_ids		= ArrayUtils::getItemsProperty($item_array, 'category_id' );
+		$category_array		= category::search(array('id'=>$category_ids),false,'id');
+
+		$address_array		=  address::search(array('id'=>array_merge($order_props['shipping_address_id'],$order_props['billing_address_id'])),false,'id');
 		$order_item_grouped = ArrayUtils::groupByIndex( $order_item, 'order_id');
 		$result = array();
 
