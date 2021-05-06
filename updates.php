@@ -16,6 +16,41 @@ use \akou\SessionException;
 
 class Service extends SuperRest
 {
+	function get()
+	{
+		session_start();
+		App::connect();
+		$this->setAllowHeader();
+
+		$name = $_GET['method'];
+
+		DBTable::autocommit(false);
+		try
+		{
+			if( is_callable(array($this, $name) ))
+			{
+				$result = $this->$name();
+				DBTable::commit();
+				return $result;
+			}
+			else
+			{
+				throw new ValidationException('No se encontro la función '.$name);
+			}
+
+		}
+		catch(LoggableException $e)
+		{
+			DBTable::rollback();
+			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
+		}
+		catch(\Exception $e)
+		{
+			DBTable::rollback();
+			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
+		}
+	}
+
 	function post()
 	{
 		session_start();
@@ -93,7 +128,7 @@ class Service extends SuperRest
 
 					if( !$box->update('store_id') )
 					{
-						throw new SystemException('Ocurrio un error por favor intentar mas tarde'.$box->getError());
+						throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$box->getError());
 					}
 				}
 				$pallet->store_id = $shipping->to_store_id;
@@ -109,7 +144,7 @@ class Service extends SuperRest
 
 				if( !$box->update('store_id') )
 				{
-					throw new SystemException('Ocurrio un error por favor intentar mas tarde'.$box->getError());
+					throw new SystemException('Ocurrio un error por favor intentar mas tarde, '.$box->getError());
 				}
 			}
 			else
@@ -296,7 +331,6 @@ class Service extends SuperRest
 		if( !$user )
 			throw new SessionException('Por favor iniciar sesion');
 
-
 		foreach( $params['boxes'] as $box_info )
 		{
 			if( empty( $box_info['box']['id'] ) )
@@ -305,6 +339,7 @@ class Service extends SuperRest
 			}
 
 			$box = box::get( $box_info['box']['id'] );
+
 			if( $box->serial_number_range_end !== null )
 			{
 				throw new ValidationException('Ya se registraron los marbetes para la caja "'.$box->id.'"');
@@ -636,7 +671,7 @@ function removeBoxFromPallet()
 
 		$user = app::getUserFromSession();
 		if( !$user )
-			throw new LogicException('Por favor iniciar sesion');
+			throw new SessionException('Por favor iniciar sesion');
 
 		$params = $this->getMethodParams();
 		$order = order::get( $params['order_id'] );
@@ -646,20 +681,17 @@ function removeBoxFromPallet()
 			throw new ValidationException('Ocurrio un error  por favor intentar mas tarde. '.DBTable::$connection->error);
 		}
 
-
-
-
 		foreach( $params['items'] as $oif)
 		{
 			$order_item_fullfillment = order_item_fullfillment::createFromArray( $oif );
+
 			if( $order_item_fullfillment->qty == 0 )
 			{
 				continue;
 			}
 
-			$order_item	= order_item::searchFirst(array('order_id'=>$params['order_id'], 'item_id'=>$order_item_fullfillment->item_id ));
-
-			$order_item_fullfillment_array = order_item_fullfillment::search(array('order_id'=>$order->id,'item_id'=>$order_item_fullfillment->item_id));
+			$order_item	= order_item::searchFirst(array('order_id'=>$params['order_id'], 'item_id'=>$order_item_fullfillment->item_id, 'is_free_of_charge'=>$order_item_fullfillment->is_free_of_charge ));
+			$order_item_fullfillment_array = order_item_fullfillment::search(array('order_id'=>$order->id,'item_id'=>$order_item_fullfillment->item_id,'is_free_of_charge'=>$order_item_fullfillment->is_free_of_charge));
 
 			$fullfilled_qty = 0;
 
@@ -667,6 +699,7 @@ function removeBoxFromPallet()
 			{
 				$fullfilled_qty+= $tmp_oif->qty;
 			}
+
 
 			if( $fullfilled_qty+$order_item_fullfillment->qty > $order_item->qty )
 			{
