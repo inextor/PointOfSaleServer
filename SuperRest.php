@@ -22,6 +22,7 @@ class SuperRest extends \akou\RestController
 	const EQ_SYMBOL='';
 	const GT_SYMBOL='>';
 	const NOT_NULL_SYMBOL = '@';
+	const ENDS_SYMBOL	= '$';
 
 	public $is_debug = false;
 
@@ -87,6 +88,24 @@ class SuperRest extends \akou\RestController
 			return array( "(".join(' OR ',$constraints ).")" );
 		return array();
 	}
+
+	function getEndsWithConstraints( $array, $table_name)
+	{
+		$constraints = array();
+
+		foreach( $array as $index )
+		{
+			if( isset( $_GET[$index.'$'] ) && $_GET[$index.'$'] !== '' )
+			{
+				$constraints[] = ($table_name?$table_name.'.':'').$index.' LIKE "%'.DBTable::escape( trim( $_GET[ $index.'$' ] ) ).'"';
+			}
+		}
+		if( count( $constraints ) )
+			return array( "(".join(' OR ',$constraints ).")" );
+		return array();
+	}
+
+
 	function getLikeConstraints($array,$table_name='')
 	{
 		$constraints = [];
@@ -217,7 +236,8 @@ class SuperRest extends \akou\RestController
 		$csv_constraints	= $this->getCsvConstraints( $key_constraints, $table_name );
 		$start_constraints			= $this->getStartLikeConstraints( $key_constraints, $table_name );
 		$not_null_constrints		= $this->getNotNullConstraints( $key_constraints, $table_name );
-		return array_merge( $like_constraints, $equal_constrints, $bigger_than_constraints,$ge_constraints, $smallest_than_constraints,$le_than_constraints,$csv_constraints,$start_constraints, $not_null_constrints );
+		$ends_constraints		= $this->getEndsWithConstraints( $key_constraints, $table_name );
+		return array_merge( $like_constraints, $equal_constrints, $bigger_than_constraints,$ge_constraints, $smallest_than_constraints,$le_than_constraints,$csv_constraints,$start_constraints,$ends_constraints, $not_null_constrints );
 	}
 
 	function getSessionErrors($usuario,$roles = NULL )
@@ -341,6 +361,11 @@ class SuperRest extends \akou\RestController
 		foreach($elements as $sort_field)
 		{
 			$tokens = explode('_', $sort_field);
+
+			$parts = explode('_', $sort_field);
+			$last = array_pop($parts);
+			$tokens = array(implode('_', $parts), $last);
+
 			if( count( $tokens) !== 2 )
 				continue;
 
@@ -371,15 +396,21 @@ class SuperRest extends \akou\RestController
 
 		$user = app::getUserFromSession();
 
-		foreach($array as $params )
-		{
 			$except = array('id','created','updated','tiempo_creacion','tiempo_actualizacion','updated_by_user_id','created_by_user_id');
 			$properties = $class_name::getAllPropertiesExcept( $except );
 
+		foreach($array as $params )
+		{
 			$obj_inst = new $class_name;
+
+			if( !empty( $optional_values ) )
 			$obj_inst->assignFromArray( $optional_values );
+
 			$obj_inst->assignFromArray( $params, $properties );
+
+			if( !empty( $system_values ) )
 			$obj_inst->assignFromArray( $system_values );
+
 			$obj_inst->unsetEmptyValues( DBTable::UNSET_BLANKS );
 
 			if( $user )
