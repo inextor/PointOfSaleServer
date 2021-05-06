@@ -21,31 +21,11 @@ class Service extends SuperRest
 		App::connect();
 		$this->setAllowHeader();
 
-		if( isset( $_GET['id'] ) && !empty( $_GET['id'] ) )
-		{
-			$price_type = price_type::get( $_GET['id']  );
-
-			if( $price_type )
-			{
-				return $this->sendStatus( 200 )->json( $price_type->toArray() );
-			}
-			return $this->sendStatus( 404 )->json(array('error'=>'The element wasn\'t found'));
-		}
-
-
-		$constraints = $this->getAllConstraints( price_type::getAllProperties() );
-
-		$constraints_str = count( $constraints ) > 0 ? join(' AND ',$constraints ) : '1';
-		$pagination	= $this->getPagination();
-
-		$sql_price_types	= 'SELECT SQL_CALC_FOUND_ROWS price_type.*
-			FROM `price_type`
-			WHERE '.$constraints_str.'
-			LIMIT '.$pagination->limit.'
-			OFFSET '.$pagination->offset;
-		$info	= DBTable::getArrayFromQuery( $sql_price_types );
-		$total	= DBTable::getTotalRows();
-		return $this->sendStatus( 200 )->json(array("total"=>$total,"data"=>$info));
+		$extra_constraints=array();
+		$extra_joins = '';
+		$extra_sort = array();
+		$this->is_debug = true;
+		return $this->genericGet('price_type',$extra_constraints,$extra_joins,$extra_sort);
 	}
 	function post()
 	{
@@ -108,96 +88,15 @@ class Service extends SuperRest
 
 	}
 
-
 	function batchInsert($array)
 	{
-		$results = array();
-
-		foreach($array as $params )
-		{
-			$properties = price_type::getAllPropertiesExcept('created','updated','id','tiempo_actualizacion','tiempo_creacion');
-
-			$price_type = new price_type();
-			$price_type->assignFromArray( $params, $properties );
-			$price_type->unsetEmptyValues( DBTable::UNSET_BLANKS );
-
-			if( !$price_type->insert() )
-			{
-					throw new ValidationException('An error Ocurred please try again later',$price_type->_conn->error );
-			}
-
-			$results [] = $price_type->toArray();
-		}
-
-		return $results;
+		return $this->genericInsert($array,"price_type");
 	}
 
 	function batchUpdate($array)
 	{
-		$results = array();
 		$insert_with_ids = false;
-
-		foreach($array as $index=>$params )
-		{
-			$properties = price_type::getAllPropertiesExcept('created','updated','tiempo_actualizacion','tiempo_creacion');
-
-			$price_type = price_type::createFromArray( $params );
-
-			if( $insert_with_ids )
-			{
-				if( !empty( $price_type->id ) )
-				{
-					if( $price_type->load(true) )
-					{
-						$price_type->assignFromArray( $params, $properties );
-						$price_type->unsetEmptyValues( DBTable::UNSET_BLANKS );
-
-						if( !$price_type->update($properties) )
-						{
-							throw new ValidationException('It fails to update element #'.$price_type->id);
-						}
-					}
-					else
-					{
-						if( !$price_type->insertDb() )
-						{
-							throw new ValidationException('It fails to update element at index #'.$index);
-						}
-					}
-				}
-			}
-			else
-			{
-				if( !empty( $price_type->id ) )
-				{
-					$price_type->setWhereString( true );
-
-					$properties = price_type::getAllPropertiesExcept('id','created','updated','tiempo_creacion','tiempo_actualizacion');
-					$price_type->unsetEmptyValues( DBTable::UNSET_BLANKS );
-
-					if( !$price_type->updateDb( $properties ) )
-					{
-						throw new ValidationException('An error Ocurred please try again later',$price_type->_conn->error );
-					}
-
-					$price_type->load(true);
-
-					$results [] = $price_type->toArray();
-				}
-				else
-				{
-					$price_type->unsetEmptyValues( DBTable::UNSET_BLANKS );
-					if( !$price_type->insert() )
-					{
-						throw new ValidationException('An error Ocurred please try again later',$price_type->_conn->error );
-					}
-
-					$results [] = $price_type->toArray();
-				}
-			}
-		}
-
-		return $results;
+		return $this->genericUpdate($array, "price_type", $insert_with_ids );
 	}
 
 	/*
@@ -205,31 +104,7 @@ class Service extends SuperRest
 	{
 		try
 		{
-			app::connect();
-			DBTable::autocommit( false );
-
-			$user = app::getUserFromSession();
-			if( $user == null )
-				throw new ValidationException('Please login');
-
-			if( empty( $_GET['id'] ) )
-			{
-				$price_type = new price_type();
-				$price_type->id = $_GET['id'];
-
-				if( !$price_type->load(true) )
-				{
-					throw new NotFoundException('The element was not found');
-				}
-
-				if( !$price_type->deleteDb() )
-				{
-					throw new SystemException('An error occourred, please try again later');
-				}
-
-			}
-			DBTable::commit();
-			return $this->sendStatus( 200 )->json( $price_type->toArray() );
+			return $this->genericDelete("price_type");
 		}
 		catch(LoggableException $e)
 		{
