@@ -46,7 +46,7 @@ class Service extends SuperRest
 		$category_array		= category::search(array('id'=>$category_ids),false,'id');
 
 		$address_array		=  address::search(array('id'=>array_merge($order_props['shipping_address_id'],$order_props['billing_address_id'])),false,'id');
-		$order_item_grouped = ArrayUtils::groupByIndex( $order_item, 'order_id');
+		$order_item_grouped = ArrayUtils::groupByIndex( $order_item_array, 'order_id');
 		$result = array();
 
 		foreach($order_array as $order)
