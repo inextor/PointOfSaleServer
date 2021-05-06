@@ -5,13 +5,13 @@ include_once( __DIR__.'/app.php' );
 include_once( __DIR__.'/akou/src/ArrayUtils.php');
 include_once( __DIR__.'/SuperRest.php');
 
-use \akou\Utils;
-use \akou\DBTable;
-use \akou\RestController;
 use \akou\ArrayUtils;
-use \akou\ValidationException;
-use \akou\LoggableException;
+use \akou\DBTable;
 use \akou\SystemException;
+use \akou\LoggableException;
+use \akou\ValidationException;
+use \akou\SessionException;
+
 
 class Service extends SuperRest
 {
@@ -51,7 +51,16 @@ class Service extends SuperRest
 
 		foreach($order_array as $order)
 		{
-			$order_items = isset( $order_item_grouped[ $order->id ] ) ? $order_item_grouped[ $order->id ] : array();
+			$order_items	= empty( $order_item_grouped[ $order['id'] ] ) ? array() : $order_item_grouped[ $order['id'] ];
+
+			$client_user	= empty( $order['client_user_id'] ) ? null : $user_array[$order['client_user_id']];
+			$cashier_user	= empty( $order['cashier_user_id'] ) ? null : $user_array[$order['cashier_user_id']];
+			
+			if( $client_user )
+				$client_user['password'] = '';
+
+			if( $cashier_user )
+				$cashier_user['password'] = '';
 
 			$order_item_info_array = array();
 			foreach($order_items as $order_item)
@@ -68,14 +77,9 @@ class Service extends SuperRest
 				)
 			}
 
-			$client = empty($order['client_user_id'] ) ? null : $client_array[ $order['client_user_id'] ];
-			$cashier= empty($order['cashier_user_id'] ) ? null : $client_array[ $order['cashier_user_id'] ];
-
 			$result = array(
 				'order'=>$order,
 				'items' => $order_items,
-				'client' => $client,
-				'cashier'	= $cashier
 			);
 		}
 	}
