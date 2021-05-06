@@ -6,6 +6,11 @@ include_once( __DIR__.'/akou/src/ArrayUtils.php');
 include_once( __DIR__.'/SuperRest.php');
 
 use \akou\ArrayUtils;
+use \akou\DBTable;
+use \akou\SystemException;
+use \akou\LoggableException;
+use \akou\ValidationException;
+use \akou\SessionException;
 
 
 class Service extends SuperRest
@@ -15,19 +20,22 @@ class Service extends SuperRest
 		session_start();
 		App::connect();
 		$this->setAllowHeader();
+		$user = app::getUserFromSession();
+
+		if( !$user )
+			return $this->sendStatus( 401 )->json(array("error"=>'Por favor iniciar sesion'));
 
 		return $this->genericGet("order");
 	}
 
 	function getInfo($order_array)
 	{
-		$order_props		= ArrayUtils::getItemsProperties($order_array,'id','store_id','client_user_id','cashier_user_id');
-		$user_ids			= array_merge($order_props['client_user_id'],$order_props['cashier_user_id']);
-		$user_array			= user::search(array('id'=>$user_ids), false, 'id');
+		$order_props		= ArrayUtils::getItemsProperties($order_array,'id','store_id','client_user_id','cashier_user_id','shipping_address_id','billing_address_id');
 
 		$store_array		= store::search(array('id'=>$order_props['store_id']), false, 'id');
+		$user_ids			= array_merge($order_props['client_user_id'],$order_props['cashier_user_id']);
+		$user_array			= user::search(array('id'=>$user_ids), false, 'id');
 		$order_item_array	= order_item::search(array('order_id'=>$order_props['id']), false, 'id');
-
 		$order_item_props	= ArrayUtils::getItemsProperties($order_item_array, 'id','item_id' );
 
 		$item_array			= item::search(array('id'=>$order_item_props['item_id']),false,'id');
@@ -35,12 +43,12 @@ class Service extends SuperRest
 		$category_ids		= ArrayUtils::getItemsProperty($item_array, 'category_id' );
 		$category_array		= category::search(array('id'=>$category_ids),false,'id');
 
+		$address_array		=  address::search(array('id'=>array_merge($order_props['shipping_address_id'],$order_props['billing_address_id'])),false,'id');
+		$order_item_grouped		= ArrayUtils::groupByProperty( $order_item_array, 'order_id' );
 		$result = array();
-		$grouped_items		= ArrayUtils::groupByProperty( $order_item_array, 'order_id' );
 
-		#$serial_number_record_array = serial_number_record::searchGroupByIndex(array('order_item_id'=>$order_item_props['id']),false,'order_item_id');
+		$address_array		=  address::search(array('id'=>array_merge($order_props['shipping_address_id'],$order_props['billing_address_id'])),false,'id');
 
-		//$this->debug('snra',$serial_number_record_array);
 
 		foreach( $order_array as $order )
 		{
@@ -52,7 +60,7 @@ class Service extends SuperRest
 
 			$cashier_user['password'] = '';
 
-			$order_items	= empty( $grouped_items[ $order['id'] ] ) ? array() : $grouped_items[ $order['id'] ];
+			$order_items	= empty( $order_item_grouped[ $order['id'] ] ) ? array() : $order_item_grouped[ $order['id'] ];
 
 			$items_result = array();
 
@@ -71,8 +79,7 @@ class Service extends SuperRest
 				);
 			}
 
-
-			$result[] = array
+			$order_info	= array
 			(
 				'client'			=> $client_user,
 				'cashier'	=> $cashier_user,
@@ -80,6 +87,13 @@ class Service extends SuperRest
 				'order'			=> $order,
 				'store'			=> $store_array[ $order['store_id'] ]
 			);
+			if( $order['shipping_address_id'] )
+				$order_info['shipping_address'] = $address_array[ $order['shipping_address_id'] ];
+
+			if( $order['billing_address_id'] )
+				$order_info['billing_address'] = $address_array[ $order['billing_address_id'] ];
+
+			$result[] = $order_info;
 		}
 
 		return $result;
