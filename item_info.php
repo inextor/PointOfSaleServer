@@ -61,7 +61,8 @@ class Service extends SuperRest
 		$grouped_item_option_value_array	= ArrayUtils::groupByIndex($item_option_value_array,'item_option_id');
 		$item_extra_ids			= ArrayUtils::getItemsProperty($item_option_value_array,'item_id');
 		$item_extra_array		= item::search(array('id'=>$item_extra_ids),false,'id');
-		$category_extra_array	= category::search(array('id'=>array_keys($item_extra_array)),false, 'id');
+		$category_extra_ids		= ArrayUtils::getItemsProperty($item_extra_array,'category_id');
+		$category_extra_array	= category::search(array('id'=>$category_extra_ids),false, 'id');
 
 
 		$this->debug('first debug', $grouped_item_option_value_array);
@@ -102,7 +103,7 @@ class Service extends SuperRest
 				foreach( $iova as $item_option_value )
 				{
 					$item_extra = $item_extra_array[ $item_option_value['item_id'] ];
-					$category_extra = isset( $category_extra_array[ $item['id'] ] ) ? $category_extra_array[ $item['id'] ] : null;
+					$category_extra = isset( $category_extra_array[ $item_extra['category_id'] ] ) ? $category_extra_array[ $item_extra['category_id'] ] : null;
 
 					$item_option_value_info_array[] = array(
 						'item'=> $item_extra,
