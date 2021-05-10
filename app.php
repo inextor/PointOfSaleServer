@@ -55,11 +55,11 @@ class App
 
 		if( isset( $_SERVER['SERVER_ADDR']) && in_array($_SERVER['SERVER_ADDR'],$test_servers ) || $is_test_server )
 		{
-				$__user		 = 'root';
-				$__password	 = 'asdf';
-				$__db		 = 'pointofsale';
-				$__host		 = '127.0.0.1';
-				$__port		 = '3306';
+				$__user		= 'root';
+				$__password	= 'asdf';
+				$__db		= 'pointofsale';
+				$__host		= '127.0.0.1';
+				$__port		= '3306';
 				app::$image_directory = './user_images';
 				app::$attachment_directory = './user_files';
 				app::$is_debug	= true;
@@ -129,8 +129,8 @@ class App
 		return $headers;
 	}
 	/**
-	 * get access token from header
-	 * */
+	* get access token from header
+	* */
 	static function getBearerToken() {
 		$headers = App::getAuthorizationHeader();
 		// HEADER: Get the access token from the header
@@ -206,7 +206,7 @@ class App
 
 	static function getCustomHttpReferer()
 	{
-		$return_var	 = FALSE;
+		$return_var	= FALSE;
 
 		if( isset( $_SERVER['HTTP_REFERER'] ) )
 		{
@@ -376,8 +376,8 @@ class App
 		$merma = new merma();
 		$merma->box_id	= $box->id;
 		$merma->stocktake_id	= $stocktake->id;
-		$merma->item_id		 = $item_id;
-		$merma->qty				 = $qty;
+		$merma->item_id		= $item_id;
+		$merma->qty				= $qty;
 		$merma->note			= $note;
 		$merma->created_by_user_id = $user->id;
 
@@ -424,7 +424,7 @@ class App
 		$merma->store_id		= $store_id;
 		$merma->qty				= $qty;
 		$merma->note			= $note;
-		$merma->created_by_user_id	=	 $user_id;
+		$merma->created_by_user_id	=	$user_id;
 
 		if(!$merma->insert())
 		{
@@ -455,9 +455,9 @@ class App
 		$merma = new merma();
 		$merma->box_id	= $box->id;
 		$merma->stocktake_id	= $stocktake ? $stocktake->id : null;
-		$merma->item_id		 = $box_content->item_id;
+		$merma->item_id		= $box_content->item_id;
 		$merma->store_id		= $store_id;
-		$merma->qty				 = $box_content->qty;
+		$merma->qty				= $box_content->qty;
 		$merma->note			= $note;
 		$merma->created_by_user_id		=	$user->id;
 
@@ -763,7 +763,7 @@ class App
 		$box_array		= box::search(array('id'=>$boxes_ids),false,'id');
 		$box_content_array		= box_content::search(array('box_id'=>$boxes_ids),false,'id');
 
-		$item_ids				 = ArrayUtils::getItemsProperty($box_content_array,'item_id',true);
+		$item_ids				= ArrayUtils::getItemsProperty($box_content_array,'item_id',true);
 		$item_array			= item::search(array('id'=>$item_ids),false,'id');
 		$category_ids		= ArrayUtils::getItemsProperty($item_array,'category_id',true);
 		$category_array		= category::search(array('id'=>$category_ids),false,'id');
@@ -837,7 +837,7 @@ class App
 		$item_array				= item::search(array('id'=>$item_ids),false,'id');
 		$category_ids			= ArrayUtils::getItemsProperty($item_array,'category_id');
 		$category_array			= category::search(array('id'=>$category_ids),false,'id');
-		$pallet_content_array	 = pallet_content::search(array('box_id'=>$box_props['id'],'status'=>'ACTIVE'),false,'box_id');
+		$pallet_content_array	= pallet_content::search(array('box_id'=>$box_props['id'],'status'=>'ACTIVE'),false,'box_id');
 
 		$box_content_group		= ArrayUtils::groupByIndex($box_content_array,'box_id');
 
@@ -850,13 +850,13 @@ class App
 
 			foreach($cc_array as $box_content)
 			{
-				$item		 = $item_array[ $box_content['item_id'] ];
+				$item		= $item_array[ $box_content['item_id'] ];
 				$category	= $category_array[ $item['category_id'] ];
 
 				$content_result[] = array(
 					'item'				=> $item,
 					'category'			=> $category,
-					'box_content'	 => $box_content
+					'box_content'	=> $box_content
 				);
 			}
 
@@ -866,9 +866,9 @@ class App
 			{
 
 				$box_info = array(
-					'box'		 => $box,
+					'box'		=> $box,
 					//'serial_number'	=> $serial_number_array[ $box['id'] ],
-					'content'			 => $content_result,
+					'content'			=> $content_result,
 				);
 
 				if( $pallet_content )
@@ -879,7 +879,7 @@ class App
 			else
 			{
 				$box_info = array(
-					'box'		 => $box,
+					'box'		=> $box,
 					//'serial_number' => $serial_number_array[ $box['id'] ],
 					'content'		=> $content_result
 				);
@@ -903,7 +903,7 @@ class App
 		$box_array			= box::search(array('id'=>$shipping_item_props['box_id']),false,'id');
 
 		$pallets_info_array			= app::getPalletInfo( $pallet_array, TRUE );
-		$box_info_array	 = app::getBoxInfo( $box_array, TRUE );
+		$box_info_array	= app::getBoxInfo( $box_array, TRUE );
 
 		$items_array = item::search(array('id'=>$shipping_item_props['item_id']),false, 'id');
 		$category_ids		= ArrayUtils::getItemsProperty($items_array,'category_id');
@@ -964,13 +964,14 @@ class App
 			{
 				$store = store::get($order->store_id );
 
-				error_log('Price type is	 ==============>'.$order->price_type_id);
+				error_log('Price type is	==============>'.$order->price_type_id);
 				$price = price::searchFirst(array('price_type_id'=>$order->price_type_id,'item_id'=>$order_item->item_id,'store_id'=>$store->id));
+
+				$item	= item::get($order_item->item_id);
+				$category	= category::get( $item->category_id );
 
 				if( $price == NULL )
 				{
-					$item	= item::get($order_item->item_id);
-					$category	= category::get( $item->category_id );
 					throw new ValidationException('No existe precio para "'.$category->name.' '.$item->name.'" en sucursal '.$store->name.' codigo: utv1');
 				}
 
@@ -979,16 +980,27 @@ class App
 				if( $order_item->is_free_of_charge == 'YES' )
 				{
 					$order_item->total			= 0;
-					$order_item->subtotal		 	= 0;
+					$order_item->subtotal		= 0;
 					$order_item->tax			= 0;
 					$order_item->unitary_price	= $price->price;
 				}
 				else
 				{
-					$order_item->total			= $price->price*$order_item->qty;
-					$order_item->subtotal		= sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
-					$order_item->tax 			= sprintf('%0.6f',$order_item->total-$order_item->subtotal);
-					$order_item->unitary_price		= $order_item->subtotal/$order_item->qty;
+					//INcluyendo el iva
+					if( false )
+					{
+						$order_item->total			= $order_item->original_unitary_price*$order_item->qty;
+						$order_item->subtotal		= sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
+						$order_item->unitary_price	= $order_item->subtotal/$order_item->qty;
+						$order_item->tax 			= sprintf('%0.6f',$order_item->total-$order_item->subtotal);
+					}
+					else
+					{
+						$order_item->subtotal		= $order_item->original_unitary_price*$order_item->qty;
+						$order_item->unitary_price	= $order_item->original_unitary_price;
+						$order_item->tax 			= sprintf('%0.6f',$order_item->subtotal*$store->tax_percent);
+						$order_item->total			= sprintf('%0.6f',$order_item->subtotal+$order_item->tax);
+					}
 				}
 
 				if(!$order_item->update('price','total','subtotal','tax','unitary_price') )
@@ -1004,7 +1016,6 @@ class App
 
 			$order->total		+= $order->shipping_cost;
 		}
-
 
 		if( !$order->update('total','subtotal','tax') )
 		{
@@ -1036,7 +1047,7 @@ class App
 
 		$search_item_array = array( 'item_id'=> $item->id ,'order_id'=> $order_item_values['order_id'], 'is_free_of_charge'=>$order_item_values['is_free_of_charge']);
 		$sql		= order_item::getSearchFirstSql( $search_item_array );
-		$order_item	 = order_item::searchFirst( $search_item_array );
+		$order_item	= order_item::searchFirst( $search_item_array );
 
 //		error_log('Sql search'. $sql );
 
@@ -1070,7 +1081,7 @@ class App
 			$order_item->price			= $price->price;
 			$order_item->price_id		= $price->id;
 			$order_item->total			= 0;
-			$order_item->subtotal		 	= 0;
+			$order_item->subtotal		= 0;
 			$order_item->unitary_price	= $price->price;//sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
 			$order_item->tax			= 0;//sprintf('%0.6f',$order_item->total-$order_item->subtotal);
 		}
