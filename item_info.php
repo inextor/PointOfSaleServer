@@ -59,7 +59,7 @@ class Service extends SuperRest
 		$category_array = category::search(array('id'=>$item_props['category_id']),false,'id');
 
 		$grouped_item_option_value_array	= ArrayUtils::groupByIndex($item_option_value_array,'item_option_id');
-		$item_extra_ids			= ArrayUtils::getItemsProperty($item_option_value_array,'id');
+		$item_extra_ids			= ArrayUtils::getItemsProperty($item_option_value_array,'item_id');
 		$item_extra_array		= item::search(array('id'=>$item_extra_ids),false,'id');
 		$category_extra_array	= category::search(array('id'=>array_keys($item_extra_array)),false, 'id');
 
