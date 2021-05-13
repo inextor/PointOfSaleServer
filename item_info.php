@@ -34,7 +34,7 @@ class Service extends SuperRest
 		{
 			$extra_join = 'JOIN category ON category.id = item.category_id ' ;
 
-			if( !empty( $_GET['category_type'])  )
+			if( !empty( $_GET['category_type']) )
 				$extra_join.=' AND category.type = "'.$_GET['category_type'].'"';
 
 			$extra_sort = array('category.name');
@@ -147,7 +147,7 @@ class Service extends SuperRest
 				throw new ValidationException('Please login');
 
 			$is_assoc	= $this->isAssociativeArray( $params );
-			$result		= $this->batchInsert( $is_assoc  ? array($params) : $params );
+			$result		= $this->batchInsert( $is_assoc ? array($params) : $params );
 			DBTable::commit();
 			return $this->sendStatus( 200 )->json( $is_assoc ? $result[0] : $result );
 		}
@@ -177,7 +177,7 @@ class Service extends SuperRest
 				throw new ValidationException('Please login');
 
 			$is_assoc	= $this->isAssociativeArray( $params );
-			$result		= $this->batchUpdate( $is_assoc  ? array($params) : $params );
+			$result		= $this->batchUpdate( $is_assoc ? array($params) : $params );
 			DBTable::commit();
 			return $this->sendStatus( 200 )->json( $is_assoc ? $result[0] : $result );
 		}
@@ -244,7 +244,7 @@ class Service extends SuperRest
 
 	function updateItemOptionValues($item_option, $item_option_values_params )
 	{
-		if( empty( $item_option_values_params )  )
+		if( empty( $item_option_values_params ) )
 		{
 			return array();
 		}
@@ -270,7 +270,7 @@ class Service extends SuperRest
 			else
 			{
 				$item_option_value = item_option_value::searchFirst(array('option_id'=>$item_option->id,'item_id'=>$params['item_option_value']['item_id']),true,FALSE,true);
-				if( $item_option_value  == null )
+				if( $item_option_value == null )
 				{
 					$item_option_value = new item_option_value();
 				}
@@ -280,14 +280,14 @@ class Service extends SuperRest
 			$item_option_value->item_option_id = $item_option->id;
 				$item_option_value->status = 'ACTIVE';
 
-			if( $item_option_value->id  )
+			if( $item_option_value->id )
 			{
-				if( !  $item_option_value->updateDb() )
+				if( ! $item_option_value->updateDb() )
 				{
 					throw new ValidationException('Ocurrio un error por favor intentar mas tarde');
 				}
 			}
-			else if( ! $item_option_value->insertDb()  )
+			else if( ! $item_option_value->insertDb() )
 			{
 				throw new ValidationException('Ocurrio un error por favor intentar mas tarde');
 			}
@@ -309,7 +309,7 @@ class Service extends SuperRest
 
 	function updateOptions($item, $item_options_params )
 	{
-		if( empty( $item_options_params )  )
+		if( empty( $item_options_params ) )
 		{
 			error_log('Esta vacio opciones');
 			return array();
@@ -334,14 +334,14 @@ class Service extends SuperRest
 			$item_option->assignFromArray( $params['item_option'] );
 			$item_option->item_id = $item->id;
 
-			if( $item_option->id  )
+			if( $item_option->id )
 			{
-				if( !  $item_option->updateDb() )
+				if( ! $item_option->updateDb() )
 				{
 					throw new ValidationException('Ocurrio un error por favor intentar mas tarde');
 				}
 			}
-			else if( ! $item_option->insertDb()  )
+			else if( ! $item_option->insertDb() )
 			{
 				throw new ValidationException('Ocurrio un error por favor intentar mas tarde');
 			}
@@ -368,7 +368,7 @@ class Service extends SuperRest
 
 	function updateAttributes($item, $item_attributes_params)
 	{
-		if( empty( $item_attributes_params )  )
+		if( empty( $item_attributes_params ) )
 			return array();
 
 		foreach($item_attributes_params as $params )
@@ -377,18 +377,18 @@ class Service extends SuperRest
 			$item_attribute->assignFromArray($params);
 			$item_attribute->item_id = $item->id;
 
-			if( $item_attribute->id  )
+			if( $item_attribute->id )
 			{
 				if( $item_attribute->item_id == $item->id )
 				{
 					throw new ValidationException('El id del item no corresponde');
 				}
-				if( !  $item_attribute->updateDb() )
+				if( ! $item_attribute->updateDb() )
 				{
 					throw new ValidationException('Ocurrio un error por favor intentar mas tarde');
 				}
 			}
-			else if( ! $item_attribute->insertDb()  )
+			else if( ! $item_attribute->insertDb() )
 			{
 				throw new ValidationException('Ocurrio un error por favor intentar mas tarde');
 			}
