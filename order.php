@@ -100,8 +100,9 @@ class Service extends SuperRest
 			{
 				throw new SystemException('Ocurrio un error por favor intetar mas tarde. '.$order->getError());
 			}
-			error_log($order->getLastQuery());
+			//error_log($order->getLastQuery());
 
+			app::updateOrderTotal( $order->id );
 			$results[]= $order->toArray();
 		}
 		return $results;
@@ -112,20 +113,19 @@ class Service extends SuperRest
 		$user = app::getUserFromSession();
 
 		$this->debug('array',$array);
-		return $this->genericInsert($array, 'order', $optional_values=array('tota'=>0,'subtotal'=>0,'tax'=>0), $system_values=array('cashier_user_id'=>$user->id));
+		$optional_values	=array( 'tota'=>0,'subtotal' =>0 ,'tax'=>0 );
+		$system_values		=array( 'cashier_user_id' => $user->id );
+		$array = $this->genericInsert($array, 'order',$optional_values , $system_values );
 
-		//$props = order::getAllPropertiesExcept('store_id','total','subtotal','tax','amount_paid','created_by_user_id','updated_by_user_id','created','updated');
+		$new_result = array();
 
-		//foreach($array as $order )
-		//{
-		//	$order = order::get( $order['id'] );
-		//	$order->assignFromArray($order,$props);
+		foreach( $array as $order_values )
+		{
+			app::updateOrderTotal( $order_values['id'] );
+			$new_result[] = order::get( $order_values['id'] );
+		}
 
-		//	if( !$order->update( $props ) )
-		//	{
-		//		throw new SystemException('Ocurrio un error por favor intetar mas tarde. '.$order->getError());
-		//	}
-		//}
+		return $new_result;
 	}
 	/*
 

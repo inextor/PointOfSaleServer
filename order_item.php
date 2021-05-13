@@ -8,7 +8,7 @@ include_once( __DIR__.'/SuperRest.php');
 use \akou\DBTable;
 use \akou\ValidationException;
 use \akou\LoggableException;
-
+use AKOU\SystemException;
 
 class Service extends SuperRest
 {
@@ -65,9 +65,20 @@ class Service extends SuperRest
 			if( $user == null )
 				throw new ValidationException('Please login');
 
+			error_log('GET is '.print_r( $params, true ) );
+
 			$is_assoc	= $this->isAssociativeArray( $params );
 			$result		= $this->batchInsert( $is_assoc  ? array($params) : $params );
-			DBTable::commit();
+
+			if( !DBTable::commit() )
+			{
+				error_log('Ocurrio error en comit');
+			}
+			else
+			{
+				error_log('COmmit exitoso');
+			}
+
 			return $this->sendStatus( 200 )->json( $is_assoc ? $result[0] : $result );
 		}
 		catch(LoggableException $e)
@@ -80,15 +91,17 @@ class Service extends SuperRest
 			DBTable::rollback();
 			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
 		}
-
 	}
 
 	function batchInsert($order_item_array)
 	{
+		$results = array();
+
 		foreach($order_item_array as $oi )
 		{
 			$results[] = app::saveOrderItem($oi)->toArray();
 		}
+		return $results;
 	}
 }
 $l = new Service();

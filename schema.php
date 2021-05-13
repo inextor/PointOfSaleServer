@@ -4,6 +4,7 @@ use \akou\DBTable;
 class address extends \akou\DBTable
 {
 	var $id;
+	var $type;
 	var $name;
 	var $email;
 	var $rfc;
@@ -50,14 +51,19 @@ class bank_account extends \akou\DBTable
 class bank_movement extends \akou\DBTable
 {
 	var $id;
+	var $currency_id;
+	var $transaction_type;
+	var $card_ending;
+	var $card_type;
+	var $payment_id;
 	var $receive_by_user_id;
 	var $client_user_id;
 	var $total;
 	var $type;
+	var $reference;
 	var $receipt_attachment_id;
 	var $invoice_attachment_id;
 	var $bank_account_id;
-	var $order_id;
 	var $created;
 	var $updated;
 }
@@ -75,16 +81,14 @@ class bank_movement_order extends \akou\DBTable
 	var $id;
 	var $bank_movement_id;
 	var $order_id;
+	var $currency_amount;
 	var $amount;
+	var $currency_id;
+	var $exchange_rate;
 	var $created;
 	var $updated;
 	var $created_by_user_id;
 	var $updated_by_user_id;
-	var $received;
-	var $change;
-	var $transaction;
-	var $payment_type;
-	var $card_termination;
 }
 class bill extends \akou\DBTable
 {
@@ -310,6 +314,7 @@ class order extends \akou\DBTable
 	var $service_type;
 	var $delivery_status;
 	var $total;
+	var $shipping_cost;
 	var $subtotal;
 	var $tax;
 	var $amount_paid;
@@ -371,10 +376,13 @@ class payment extends \akou\DBTable
 	var $id;
 	var $company_id;
 	var $type;
-	var $amount;
+	var $payment_amount;
+	var $received_amount;
+	var $change_amount;
+	var $currency_id;
+	var $exchange_rate;
 	var $received_by_user_id;
 	var $paid_by_user_id;
-	var $order_id;
 	var $created;
 	var $updated;
 }

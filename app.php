@@ -50,7 +50,6 @@ class App
 
 		$domain = app::getCustomHttpReferer();
 
-		//error_log($domain);
 		$is_test_server = strpos($domain,'test') !== false;
 
 		if( isset( $_SERVER['SERVER_ADDR']) && in_array($_SERVER['SERVER_ADDR'],$test_servers ) || $is_test_server )
@@ -279,12 +278,10 @@ class App
 
 		if( $box_content )
 		{
-			error_log('en box_content');
 			app::removeItemFromBoxContent($box_content,1,$user,$note);
 		}
 		else
 		{
-			error_log('en removeStock');
 			app::removeStock($serial_number->item_id, $serial_number->store_id, $user->id, 0, $note);
 		}
 
@@ -449,8 +446,6 @@ class App
 				throw new ValidationException('Ocurrio un error no se pudo ubicar la caja');
 			}
 		}
-		//error_log('Container'.print_r($box->toArray(),true) );
-		//error_log('stocktake'.print_r($stocktake,true) );
 
 		$merma = new merma();
 		$merma->box_id	= $box->id;
@@ -952,7 +947,7 @@ class App
 	static function updateOrderTotal($order_id)
 	{
 		$order = order::get( $order_id );
-		$order_item_array = order_item::search(array('order_id'=>$order_id) );
+		$order_item_array = order_item::search(array('order_id'=>$order_id,'status'=>'ACTIVE') );
 
 		//$pagos		= pago::search(array('id_venta'=>$id_venta ) );
 		$order->total	= 0;
@@ -963,17 +958,24 @@ class App
 			foreach($order_item_array as $order_item)
 			{
 				$store = store::get($order->store_id );
-
-				error_log('Price type is	==============>'.$order->price_type_id);
-				$price = price::searchFirst(array('price_type_id'=>$order->price_type_id,'item_id'=>$order_item->item_id,'store_id'=>$store->id));
-
-				$item	= item::get($order_item->item_id);
-				$category	= category::get( $item->category_id );
+				$price = price::searchFirst(array('price_type_id'=>$order->price_type_id,'item_id'=>$order_item->item_id,'price_list_id'=>$store->price_list_id));
 
 				if( $price == NULL )
 				{
-					throw new ValidationException('No existe precio para "'.$category->name.' '.$item->name.'" en sucursal '.$store->name.' codigo: utv1');
+					$item = item::get( $price->item_id );
+					$category_name = '';
+
+					if( $item->category_id )
+					{
+						$category = category::get( $item->category_id );
+						$category_name = $category->name;
+					}
+
+					throw new ValidationException('No existe precio para "'.$category_name.' '.$item->name.'" en sucursal '.$store->name.' codigo: utv1');
 				}
+
+				$item	= item::get($order_item->item_id);
+				$category	= category::get( $item->category_id );
 
 				$order_item->price			= $price->price;
 
@@ -1003,8 +1005,7 @@ class App
 					}
 				}
 
-				if(!$order_item->update('price','total','subtotal','tax','unitary_price') )
-				{
+				if(!$order_item->update('price','total','subtotal','tax','unitary_price') ) {
 					throw new SystemException('Ocurrio un error por favor intente mas tarde Codigo: utv2');
 				}
 
@@ -1014,8 +1015,11 @@ class App
 				$order->tax				+= $order_item->tax;
 			}
 
-			$order->total		+= $order->shipping_cost;
+			if( !empty( $order->shipping_cost) )
+				$order->total		+= $order->shipping_cost;
 		}
+
+		error_log('Updating order_total '.print_r($order->toArray(), true ) );
 
 		if( !$order->update('total','subtotal','tax') )
 		{
@@ -1028,12 +1032,16 @@ class App
 		if( empty( $order_item_values['item_id'] ) )
 			throw new ValidationException('item id cant be empty');
 
+		if( empty( $order_item_values['order_id']) )
+			throw new ValidationException('order_id cant be empty');
+
 		$item = item::get( $order_item_values['item_id'] );
 
 		if( empty( $item ) )
 		{
 			throw new ValidationException('El producto o servicio no se encontro');
 		}
+
 
 		$order = order::get( $order_item_values['order_id'] );
 
@@ -1043,13 +1051,16 @@ class App
 		if( $order == null )
 			throw new ValidationException('No se encontro la orden');
 
-	//	error_log('checking order item_values'.print_r( $order_item_values,true ));
 
-		$search_item_array = array( 'item_id'=> $item->id ,'order_id'=> $order_item_values['order_id'], 'is_free_of_charge'=>$order_item_values['is_free_of_charge']);
-		$sql		= order_item::getSearchFirstSql( $search_item_array );
+		$search_item_array = array
+		(
+			'item_id'			=> $item->id,
+			'order_id'			=> $order_item_values['order_id'],
+			'is_free_of_charge'	=> $order_item_values['is_free_of_charge'],
+			'status'			=> 'ACTIVE'
+		);
+
 		$order_item	= order_item::searchFirst( $search_item_array );
-
-//		error_log('Sql search'. $sql );
 
 		if( empty( $order_item) )
 		{
@@ -1057,14 +1068,12 @@ class App
 			$order_item->order_id = $order->id;
 		}
 
-		$price_search = array('item_id'=>$item->id,'store_id'=>$order->store_id,'price_type_id'=>$order->price_type_id);
+		$store = store::get( $order->store_id );
+		$price_search = array('item_id'=>$item->id,'price_list_id'=>$store->price_list_id,'price_type_id'=>$order->price_type_id);
 
 		$price	= price::searchFirst( $price_search );
 
-		if( !$price )
-		{
-			throw new ValidationException('El precio del artículo "'.$item->name.'" no se encontro');
-		}
+		error_log('price_search'.print_r( $price_search, true ) );
 
 		$store = store::get( $order->store_id );
 
@@ -1073,6 +1082,7 @@ class App
 
 		$order_item->item_id		= $order_item_values['item_id'];
 		$order_item->qty			= $order_item_values['qty'];
+		$order_item->status			= $order_item_values['status'];
 		$order_item->return_required	= empty($order_item_values['return_required']) ? 'NO' : $order_item_values['return_required'];
 		$order_item->is_free_of_charge = empty( $order_item_values['is_free_of_charge'] ) ? 'NO' : $order_item_values['is_free_of_charge'] ;
 
@@ -1089,9 +1099,9 @@ class App
 		{
 			$order_item->price			= $price->price;
 			$order_item->price_id		= $price->id;
-			$order_item->total			= $price->price*$order_item->qty;
-			$order_item->subtotal		= sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
-			$order_item->unitary_price	= $order_item->subtotal/$order_item->qty;
+			$order_item->subtotal		= $price->price*$order_item->qty;
+			$order_item->total			= $order_item->subtotal*(1+($store->tax_percent/100));
+			$order_item->unitary_price	= $price->price;
 			$order_item->tax			= sprintf('%0.6f',$order_item->total-$order_item->subtotal);
 		}
 
@@ -1180,7 +1190,6 @@ class App
 		$curl->setPostData( $payload );
 		$curl->debug = true;
 		$curl->execute();
-		//error_log('Request payload ==>'.PHP_EOL.$payload);
 
 		if( $curl->status_code >= 200 && $curl->status_code <300 )
 		{
