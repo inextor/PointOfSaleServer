@@ -36,26 +36,26 @@ class Service extends SuperRest
 	{
 		$result = array();
 
-		$payment_prop = ArrayUtils::getItemsProperties($payment_array,'id','paid_by_user_id', 'receive_by_user_id');
-		$bank_movement_order_array	= bank_movement_order::search(array('payment_id'=>$payment_prop['id']), false, 'id');
-		$bank_movement	= bank_movement::search(array('payment_id'=>$payment_prop['id']),false,'id');
+		$payment_prop				= ArrayUtils::getItemsProperties($payment_array,'id','paid_by_user_id', 'receive_by_user_id');
+		$bank_movement_array		= bank_movement::search(array('payment_id'=>$payment_prop['id']),false,'id');
+		$bank_movement_grouped 		= ArrayUtils::groupByIndex($bank_movement_array,'payment_id');
+		$bank_movement_order_array	= bank_movement_order::search(array('bank_movement'=>array_keys($bank_movement_array)), false, 'id');
 
 		$bmo_group_array		= ArrayUtils::groupByIndex($bank_movement_order_array,'bank_movement_id');
 
-		$bank_movement_order_group_by_payment_id = ArrayUtils::groupByIndex($bank_movement_order_array, 'payment_id');
-
 		foreach($payment_array as $payment)
 		{
-			$bmoa_grouped = $bank_movement_order_group_by_payment_id[$payment->id]??array();
+			$bm_array		= $bank_movement_grouped[ $payment['id'] ];
+
 			$movements	= array();
 
-			foreach( $bmoa_grouped as $bank_movement)
+			foreach($bm_array as $bank_movement)
 			{
-				$bmo_array	= $bmo_group_array[$bank_movement['id']];
+				$bmoa_grouped = $bmo_group_array[ $bank_movement['id'] ]??array();
 				$movements[] = array
 				(
-					'bank_movement'=>$bank_movement[ $bank_movement_order['bank_movement_id'] ],
-					'bank_movement_orders'=>$bmo_array,
+					'bank_movement'=>$bank_movement,
+					'bank_movement_orders'=>$bmoa_grouped,
 				);
 			}
 
@@ -66,7 +66,7 @@ class Service extends SuperRest
 			);
 		}
 
-		return $payment_array;
+		return $result;
 	}
 
 	function post()
@@ -109,6 +109,11 @@ class Service extends SuperRest
 		{
 			$payment = new payment();
 			$payment->assignFromArray($payment_info_array['payment']);
+
+			if( $payment->payment_amount == 0 )
+			{
+				throw new ValidationException('El pago debe ser al menos de 1 peso');
+			}
 
 			if( !$payment->insert() )
 			{
