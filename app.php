@@ -952,6 +952,8 @@ class App
 		//$pagos		= pago::search(array('id_venta'=>$id_venta ) );
 		$order->total	= 0;
 		$poner_precios	= $order->status == 'PENDING';
+		error_log('Poner precios"'.$poner_precios.'"');
+
 		//Una vez que se hace el trato el precio no se modifica
 		if( $poner_precios )
 		{
@@ -1000,7 +1002,7 @@ class App
 					{
 						$order_item->subtotal		= $order_item->original_unitary_price*$order_item->qty;
 						$order_item->unitary_price	= $order_item->original_unitary_price;
-						$order_item->tax 			= sprintf('%0.6f',$order_item->subtotal*$store->tax_percent);
+						$order_item->tax 			= sprintf('%0.6f',$order_item->subtotal*($store->tax_percent/100));
 						$order_item->total			= sprintf('%0.6f',$order_item->subtotal+$order_item->tax);
 					}
 				}
@@ -1009,6 +1011,7 @@ class App
 					throw new SystemException('Ocurrio un error por favor intente mas tarde Codigo: utv2');
 				}
 
+				error_log('order_item_total'.$order_item->total );
 				$order->total			+= $order_item->total;
 				$order->pending_amount	= $order->total;
 				$order->subtotal		+= $order_item->subtotal;
@@ -1086,23 +1089,10 @@ class App
 		$order_item->return_required	= empty($order_item_values['return_required']) ? 'NO' : $order_item_values['return_required'];
 		$order_item->is_free_of_charge = empty( $order_item_values['is_free_of_charge'] ) ? 'NO' : $order_item_values['is_free_of_charge'] ;
 
-		if( $order_item->is_free_of_charge == 'YES' )
+		if( empty( $order_item->id ) )
 		{
-			$order_item->price			= $price->price;
-			$order_item->price_id		= $price->id;
-			$order_item->total			= 0;
-			$order_item->subtotal		= 0;
-			$order_item->unitary_price	= $price->price;//sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
-			$order_item->tax			= 0;//sprintf('%0.6f',$order_item->total-$order_item->subtotal);
-		}
-		else
-		{
-			$order_item->price			= $price->price;
-			$order_item->price_id		= $price->id;
-			$order_item->subtotal		= $price->price*$order_item->qty;
-			$order_item->total			= $order_item->subtotal*(1+($store->tax_percent/100));
-			$order_item->unitary_price	= $price->price;
-			$order_item->tax			= sprintf('%0.6f',$order_item->total-$order_item->subtotal);
+			$order_item->original_unitary_price = $price->price;
+			$order_item->unitary_price =  $price->price;
 		}
 
 		if( empty( $order_item->id ) )

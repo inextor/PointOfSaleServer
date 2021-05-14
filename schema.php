@@ -54,10 +54,10 @@ class bank_movement extends \akou\DBTable
 	var $currency_id;
 	var $transaction_type;
 	var $card_ending;
-	var $card_type;
 	var $payment_id;
 	var $receive_by_user_id;
 	var $client_user_id;
+	var $amount_received;
 	var $total;
 	var $type;
 	var $reference;
