@@ -957,6 +957,10 @@ class App
 		//Una vez que se hace el trato el precio no se modifica
 		if( $poner_precios )
 		{
+			$order->subtotal 	= 0;
+			$order->total		= 0;
+			$order->tax			= 0;
+
 			foreach($order_item_array as $order_item)
 			{
 				$store = store::get($order->store_id );
@@ -988,24 +992,21 @@ class App
 					$order_item->tax			= 0;
 					$order_item->unitary_price	= $price->price;
 				}
+				else if( false )
+				{
+					$order_item->total			= $order_item->original_unitary_price*$order_item->qty;
+					$order_item->subtotal		= sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
+					$order_item->unitary_price	= $order_item->subtotal/$order_item->qty;
+					$order_item->tax 			= sprintf('%0.6f',$order_item->total-$order_item->subtotal);
+				}
 				else
 				{
-					//INcluyendo el iva
-					if( false )
-					{
-						$order_item->total			= $order_item->original_unitary_price*$order_item->qty;
-						$order_item->subtotal		= sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
-						$order_item->unitary_price	= $order_item->subtotal/$order_item->qty;
-						$order_item->tax 			= sprintf('%0.6f',$order_item->total-$order_item->subtotal);
-					}
-					else
-					{
-						$order_item->subtotal		= $order_item->original_unitary_price*$order_item->qty;
-						$order_item->unitary_price	= $order_item->original_unitary_price;
-						$order_item->tax 			= sprintf('%0.6f',$order_item->subtotal*($store->tax_percent/100));
-						$order_item->total			= sprintf('%0.6f',$order_item->subtotal+$order_item->tax);
-					}
+					$order_item->subtotal		= $order_item->original_unitary_price*$order_item->qty;
+					$order_item->unitary_price	= $order_item->original_unitary_price;
+					$order_item->tax 			= sprintf('%0.6f',$order_item->subtotal*($store->tax_percent/100));
+					$order_item->total			= sprintf('%0.6f',$order_item->subtotal+$order_item->tax);
 				}
+
 
 				if(!$order_item->update('price','total','subtotal','tax','unitary_price') ) {
 					throw new SystemException('Ocurrio un error por favor intente mas tarde Codigo: utv2');
@@ -1013,13 +1014,14 @@ class App
 
 				error_log('order_item_total'.$order_item->total );
 				$order->total			+= $order_item->total;
-				$order->pending_amount	= $order->total;
 				$order->subtotal		+= $order_item->subtotal;
 				$order->tax				+= $order_item->tax;
 			}
 
 			if( !empty( $order->shipping_cost) )
+			{
 				$order->total		+= $order->shipping_cost;
+			}
 		}
 
 		error_log('Updating order_total '.print_r($order->toArray(), true ) );
@@ -1032,6 +1034,8 @@ class App
 
 	static function saveOrderItem($order_item_values )
 	{
+		error_log('Order item has '.print_R( $order_item_values, true) );
+
 		if( empty( $order_item_values['item_id'] ) )
 			throw new ValidationException('item id cant be empty');
 
@@ -1044,7 +1048,6 @@ class App
 		{
 			throw new ValidationException('El producto o servicio no se encontro');
 		}
-
 
 		$order = order::get( $order_item_values['order_id'] );
 
@@ -1060,10 +1063,28 @@ class App
 			'item_id'			=> $item->id,
 			'order_id'			=> $order_item_values['order_id'],
 			'is_free_of_charge'	=> $order_item_values['is_free_of_charge'],
-			'status'			=> 'ACTIVE'
+			'status'			=> 'ACTIVE',
+			'item_position'		=> $order_item_values['item_position']
 		);
 
-		$order_item	= order_item::searchFirst( $search_item_array );
+		if( !empty( $order_item_values['id'] )  )
+		{
+			$order_item	= order_item::get( $order_item_values['id'] );
+
+			if( !$order_item )
+			{
+				throw new ValidationException('El detalle de la orden con id '.$order_item_values['id'] .'no existe');
+			}
+
+			if( $order_item->order_id != $order_item_values['order_id'] )
+			{
+				throw new ValidationException('Ocurrio un error el id no corresponde con la orden');
+			}
+		}
+		else
+		{
+			$order_item	= order_item::searchFirst( $search_item_array );
+		}
 
 		if( empty( $order_item) )
 		{
@@ -1088,11 +1109,13 @@ class App
 		$order_item->status			= $order_item_values['status'];
 		$order_item->return_required	= empty($order_item_values['return_required']) ? 'NO' : $order_item_values['return_required'];
 		$order_item->is_free_of_charge = empty( $order_item_values['is_free_of_charge'] ) ? 'NO' : $order_item_values['is_free_of_charge'] ;
+		$order_item->item_position	= $order_item_values['item_position'];
 
 		if( empty( $order_item->id ) )
 		{
-			$order_item->original_unitary_price = $price->price;
-			$order_item->unitary_price =  $price->price;
+			$order_item->original_unitary_price	= $price->price;
+			$order_item->unitary_price			= $price->price;
+			$order_item->subtotal				= sprintf('%0.6f',$price->price*$order_item->qty);
 		}
 
 		if( empty( $order_item->id ) )
@@ -1106,8 +1129,6 @@ class App
 		{
 			throw new SystemException('Ocurrio un error por favor intentar mas tarde',print_r( $order_item->toArray(),true));
 		}
-
-		app::updateOrderTotal($order_item->order_id);
 
 		return $order_item;
 	}
