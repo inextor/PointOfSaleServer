@@ -318,7 +318,7 @@ class SuperRest extends \akou\RestController
 		$pagination	= $this->getPagination();
 		$sort_string = empty( $_GET['_sort'] ) ? '' : $this->getSortOrderString($_GET['_sort'], $table_name, $extra_sort);
 
-		$sql	= 'SELECT SQL_CALC_FOUND_ROWS `'.$table_name.'`.*
+		$sql	= 'SELECT DISTINCT SQL_CALC_FOUND_ROWS `'.$table_name.'`.*
 			FROM `'.$table_name.'`
 			'.$extra_joins.'
 			WHERE '.$constraints_str.'
