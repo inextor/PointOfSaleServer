@@ -29,6 +29,14 @@ class Service extends SuperRest
 		$extra_joins = '';
 		$extra_sort = array();
 		$this->is_debug = true;
+
+		if( !empty($_GET['order_id']) )
+		{
+			$extra_joins = 'JOIN bank_movement ON bank_movement.payment_id = payment.id
+				JOIN bank_movement_order ON bank_movement_order.bank_movement_id = bank_movement.id
+					AND bank_movement_order.order_id = "'.DBTable::escape( $_GET['order_id'] ).'"';
+		}
+
 		return $this->genericGet("payment",$extra_constraints,$extra_joins,$extra_sort);
 	}
 
@@ -162,7 +170,17 @@ class Service extends SuperRest
 
 					$order->amount_paid += $bank_movement_order->amount;
 
-					if( !$order->updateDb('amount_paid') )
+					if( ($order->total - $order->amount_paid) <= 0.01 )
+					{
+						$order->paid_status = 'PAID';
+					}
+					else
+					{
+						$order->paid_status = 'PARTIALLY_PAID';
+					}
+
+
+					if( !$order->updateDb('amount_paid','paid_status') )
 					{
 						throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$order->getError());
 					}
