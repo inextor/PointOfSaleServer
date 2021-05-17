@@ -335,6 +335,7 @@ class order_item extends \akou\DBTable
 	var $status;
 	var $commanda_status;
 	var $item_id;
+	var $item_position;
 	var $item_option_id;
 	var $return_required;
 	var $item_extra_id;
@@ -410,6 +411,7 @@ class preferences extends \akou\DBTable
 	var $name;
 	var $default_product_image_id;
 	var $default_price_type_id;
+	var $default_ticket_image_id;
 	var $logo_image_id;
 	var $login_image_id;
 	var $default_user_logo_image_id;
@@ -596,10 +598,12 @@ class stocktake_scan extends \akou\DBTable
 class store extends \akou\DBTable
 {
 	var $id;
+	var $ticket_image_id;
 	var $client_user_id;
 	var $price_list_id;
 	var $exchange_rate;
 	var $name;
+	var $ticket_footer_text;
 	var $business_name;
 	var $rfc;
 	var $tax_percent;
