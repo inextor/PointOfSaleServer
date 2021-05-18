@@ -213,7 +213,7 @@ class Service extends SuperRest
 
 			foreach($order_data['items'] as $order_item_values )
 			{
-				$order_item_value['order_item']['order_id'] = $order->id;
+				$order_item_values['order_item']['order_id'] = $order->id;
 				$order_item_array[] = app::saveOrderItem( $order_item_values['order_item'] )->toArray();
 			}
 
