@@ -161,6 +161,25 @@ class cart_item extends \akou\DBTable
 	var $created;
 	var $updated;
 }
+class cash_close extends \akou\DBTable
+{
+	var $id;
+	var $created_by_user_id;
+	var $updated;
+	var $created;
+	var $start;
+	var $end;
+}
+class cashier_fund extends \akou\DBTable
+{
+	var $id;
+	var $amount;
+	var $currency_id;
+	var $created;
+	var $updated;
+	var $created_by_user_id;
+	var $cashier_hour;
+}
 class category extends \akou\DBTable
 {
 	var $id;
