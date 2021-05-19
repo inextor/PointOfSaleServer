@@ -192,7 +192,7 @@ class Service extends SuperRest
 
 					if( !$bank_movement_order->insertDb() )
 					{
-						throw new SystemException('Ocurrio un error por favor intetar mas tarde. '.$bank_movement_order->getError());
+						throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$bank_movement_order->getError());
 					}
 				}
 			}
