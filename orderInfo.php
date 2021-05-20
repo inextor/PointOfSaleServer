@@ -55,7 +55,7 @@ class Service extends SuperRest
 
 			$client_user	= empty( $order['client_user_id'] ) ? null : $user_array[$order['client_user_id']];
 			$cashier_user	= empty( $order['cashier_user_id'] ) ? null : $user_array[$order['cashier_user_id']];
-			
+
 			if( $client_user )
 				$client_user['password'] = '';
 

@@ -55,7 +55,7 @@ class bank_movement extends \akou\DBTable
 	var $transaction_type;
 	var $card_ending;
 	var $payment_id;
-	var $receive_by_user_id;
+	var $received_by_user_id;
 	var $client_user_id;
 	var $amount_received;
 	var $total;
@@ -167,18 +167,10 @@ class cash_close extends \akou\DBTable
 	var $created_by_user_id;
 	var $updated;
 	var $created;
+	var $since;
+	var $closed;
 	var $start;
 	var $end;
-}
-class cashier_fund extends \akou\DBTable
-{
-	var $id;
-	var $amount;
-	var $currency_id;
-	var $created;
-	var $updated;
-	var $created_by_user_id;
-	var $cashier_hour;
 }
 class category extends \akou\DBTable
 {
@@ -211,6 +203,16 @@ class file_type extends \akou\DBTable
 	var $image_id;
 	var $created;
 	var $updated;
+}
+class fund extends \akou\DBTable
+{
+	var $id;
+	var $amount;
+	var $currency_id;
+	var $created;
+	var $updated;
+	var $created_by_user_id;
+	var $cashier_hour;
 }
 class image extends \akou\DBTable
 {
@@ -396,12 +398,13 @@ class payment extends \akou\DBTable
 	var $id;
 	var $company_id;
 	var $type;
+	var $concept;
 	var $payment_amount;
 	var $received_amount;
 	var $change_amount;
 	var $currency_id;
 	var $exchange_rate;
-	var $received_by_user_id;
+	var $created_by_user_id;
 	var $paid_by_user_id;
 	var $created;
 	var $updated;

@@ -44,10 +44,10 @@ class Service extends SuperRest
 	{
 		$result = array();
 
-		$payment_prop				= ArrayUtils::getItemsProperties($payment_array,'id','paid_by_user_id', 'receive_by_user_id');
-		$bank_movement_array		= bank_movement::search(array('payment_id'=>$payment_prop['id']),false,'id');
-		$bank_movement_grouped 		= ArrayUtils::groupByIndex($bank_movement_array,'payment_id');
-		$bank_movement_order_array	= bank_movement_order::search(array('bank_movement'=>array_keys($bank_movement_array)), false, 'id');
+		$payment_prop				= ArrayUtils			::getItemsProperties($payment_array,'id','paid_by_user_id', 'received_by_user_id');
+		$bank_movement_array		= bank_movement			::search(array('payment_id'=>$payment_prop['id']),false,'id');
+		$bank_movement_grouped 		= ArrayUtils			::groupByIndex($bank_movement_array,'payment_id');
+		$bank_movement_order_array	= bank_movement_order	::search(array('bank_movement'=>array_keys($bank_movement_array)), false, 'id');
 
 		$bmo_group_array		= ArrayUtils::groupByIndex($bank_movement_order_array,'bank_movement_id');
 
@@ -123,6 +123,8 @@ class Service extends SuperRest
 				throw new ValidationException('El pago debe ser al menos de 1 peso');
 			}
 
+			$payment->created_by_user_id = $user->id;
+
 			if( !$payment->insert() )
 			{
 				throw new SystemException('Ocurrio un error por favor intetar mas tarde. '.$payment->getError());
@@ -133,7 +135,7 @@ class Service extends SuperRest
 				$bank_movement						= new bank_movement();
 				$bank_movement->assignFromArray( $bank_movement_info_array['bank_movement'] );
 				$bank_movement->payment_id			= $payment->id;
-				$bank_movement->receive_by_user_id	= $user->id;
+				$bank_movement->received_by_user_id	= $user->id;
 				$bank_movement->type 				= 'income';
 
 				if( !$bank_movement->insertDb() )
@@ -178,7 +180,6 @@ class Service extends SuperRest
 					{
 						$order->paid_status = 'PARTIALLY_PAID';
 					}
-
 
 					if( !$order->updateDb('amount_paid','paid_status') )
 					{
