@@ -117,10 +117,10 @@ class Service extends SuperRest
 				'store'		=> $store_array[ $order['store_id'] ]
 			);
 
-			if( $order['shipping_address_id'] )
+			if( !empty( $order['shipping_address_id'] ) )
 				$order_info['shipping_address'] = $address_array[ $order['shipping_address_id'] ];
 
-			if( $order['billing_address_id'] )
+			if( !empty( $order['billing_address_id'] ) )
 				$order_info['billing_address'] = $address_array[ $order['billing_address_id'] ];
 
 			$result[] = $order_info;

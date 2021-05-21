@@ -56,9 +56,9 @@ class Service extends SuperRest
 			'created'.DBTable::LE_SYMBOL	=> $cash_close->created
 		);
 
-		$bank_movement_array	= bank_movement::search( $bm_search );
-		$funds					= fund::search( $funds_search );
-		$payment_array			= payment::search( $funds_search );
+		$bank_movement_array	= bank_movement::search( $bm_search, false );
+		$funds					= fund::search( $funds_search,false );
+		$payment_array			= payment::search( $funds_search,false );
 
 		error_log('PaymentSql'.payment::getSearchSql($funds_search) );
 
@@ -96,7 +96,7 @@ class Service extends SuperRest
 			'system_activated'.DBTable::LE_SYMBOL	=> $cash_close->created
 		);
 
-		$order_array	= order::search( $search_array );
+		$order_array	= order::search( $search_array,false );
 
 		return array(
 			'cash_close'	=> $cash_close_value,

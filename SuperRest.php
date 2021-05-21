@@ -389,27 +389,31 @@ class SuperRest extends \akou\RestController
 		return ' ORDER BY '.join(',',$sort_array).PHP_EOL;
 	}
 
-	function genericInsert($array, $table_name, $optional_values=array(), $system_values=array())
+	function genericInsert($array, $table_name, $optional_values=array(), $system_values=array(), $banned_values=null)
 	{
 		$class_name = "APP\\$table_name";
 		$results = array();
 
 		$user = app::getUserFromSession();
 
+		$except = $banned_values;
+
+		if( $except == $banned_values )
 			$except = array('id','created','updated','tiempo_creacion','tiempo_actualizacion','updated_by_user_id','created_by_user_id');
-			$properties = $class_name::getAllPropertiesExcept( $except );
+
+		$properties = $class_name::getAllPropertiesExcept( $except );
 
 		foreach($array as $params )
 		{
 			$obj_inst = new $class_name;
 
 			if( !empty( $optional_values ) )
-			$obj_inst->assignFromArray( $optional_values );
+				$obj_inst->assignFromArray( $optional_values );
 
 			$obj_inst->assignFromArray( $params, $properties );
 
 			if( !empty( $system_values ) )
-			$obj_inst->assignFromArray( $system_values );
+				$obj_inst->assignFromArray( $system_values );
 
 			$obj_inst->unsetEmptyValues( DBTable::UNSET_BLANKS );
 

@@ -47,7 +47,7 @@ class Service extends SuperRest
 		$payment_prop				= ArrayUtils			::getItemsProperties($payment_array,'id','paid_by_user_id', 'received_by_user_id');
 		$bank_movement_array		= bank_movement			::search(array('payment_id'=>$payment_prop['id']),false,'id');
 		$bank_movement_grouped 		= ArrayUtils			::groupByIndex($bank_movement_array,'payment_id');
-		$bank_movement_order_array	= bank_movement_order	::search(array('bank_movement'=>array_keys($bank_movement_array)), false, 'id');
+		$bank_movement_order_array	= bank_movement_order	::search(array('bank_movement_id'=>array_keys($bank_movement_array)), false, 'id');
 
 		$bmo_group_array		= ArrayUtils::groupByIndex($bank_movement_order_array,'bank_movement_id');
 
@@ -140,7 +140,7 @@ class Service extends SuperRest
 
 				if( !$bank_movement->insertDb() )
 				{
-					throw new SystemException('Ocurrio un error por favor intetar mas tarde. '.$bank_movement->getError());
+										throw new SystemException('Ocurrio un error por favor intetar mas tarde. '.$bank_movement->getError());
 				}
 
 				foreach( $bank_movement_info_array['bank_movement_orders'] as $bank_movement_order_data)
@@ -150,8 +150,10 @@ class Service extends SuperRest
 
 					if(empty( $bank_movement_order->order_id)  )
 					{
+
 						throw new ValidationException('El id de la orden no puede estar vacio');
 					}
+
 
 					$order = order::get( $bank_movement_order->order_id );
 
@@ -203,6 +205,10 @@ class Service extends SuperRest
 
 					if( !$bank_movement_order->insertDb() )
 					{
+						$currency = currency::get( $bank_movement->currency_id );
+						error_log('currency'. print_r( $currency->toArray(),true ) );
+						error_log('BMO'. print_r( $bank_movement_order->toArray(),true ) );
+
 						throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$bank_movement_order->getError());
 					}
 				}
