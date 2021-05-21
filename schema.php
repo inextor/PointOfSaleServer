@@ -64,6 +64,7 @@ class bank_movement extends \akou\DBTable
 	var $receipt_attachment_id;
 	var $invoice_attachment_id;
 	var $bank_account_id;
+	var $note;
 	var $created;
 	var $updated;
 }
