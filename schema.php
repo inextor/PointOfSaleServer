@@ -166,9 +166,8 @@ class cash_close extends \akou\DBTable
 	var $id;
 	var $created_by_user_id;
 	var $updated;
-	var $created;
 	var $since;
-	var $closed;
+	var $created;
 	var $start;
 	var $end;
 }
@@ -329,12 +328,12 @@ class order extends \akou\DBTable
 	var $sat_xml_file_id;
 	var $sat_pdf_id;
 	var $tag;
-	var $attended_status;
 	var $paid_timetamp;
 	var $client_name;
 	var $service_type;
 	var $delivery_status;
 	var $total;
+	var $discount;
 	var $shipping_cost;
 	var $subtotal;
 	var $tax;
@@ -344,6 +343,7 @@ class order extends \akou\DBTable
 	var $city;
 	var $state;
 	var $created;
+	var $system_activated;
 	var $updated;
 	var $authorized_by;
 	var $note;

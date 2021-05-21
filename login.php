@@ -55,12 +55,13 @@ class LoginController extends SuperRest
 		$session->id			= app::getRandomString(16);
 		$session->user_id		= $user->id;
 		$session->status		= 'ACTIVE';
-		$session->created		= date('Y-m-d h:s:i');
 
 		if( !$session->insertDb() )
 		{
 			return $this->sendStatus(400)->json(array("error"=>"An error occurred please try again later",'debug'=>$session->getLastQuery()));
 		}
+
+		$session->load(true);
 
 		$user_permission = user_permission::searchFirst(array('user_id'=>$user->id),false);
 		if( !$user_permission )

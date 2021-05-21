@@ -85,6 +85,24 @@ class Service extends SuperRest
 			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
 		}
 	}
+
+	function logout()
+	{
+		$user = app::getUserFromSession();
+
+		if( $user )
+		{
+			$session_array = session::search(array('status'=>'ACTIVE'));
+
+			foreach( $session_array as $session )
+			{
+				$session->status = 'INACTIVE';
+				$session->update('status');
+			}
+		}
+		return $this->sendStatus(200)->json(true);
+	}
+
 	function markShippingAsSent()
 	{
 		$user = app::getUserFromSession();

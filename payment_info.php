@@ -155,6 +155,16 @@ class Service extends SuperRest
 
 					$order = order::get( $bank_movement_order->order_id );
 
+					if( $order->status == 'PENDING')
+					{
+						$order->status = 'ACTIVE';
+						$order->system_activated = date('Y-m-d H:i:s');
+						if( !$order->update('status','system_activated') )
+						{
+							throw new SystemException('Ocurrio un error no se puedo actualizar la informacion de laorden');
+						}
+					}
+
 					if( empty( $order ) )
 					{
 						throw new SystemException('Ocurrio un error no se encontro la orden con id.'.$bank_movement_order->order_id );
