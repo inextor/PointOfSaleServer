@@ -39,6 +39,7 @@ class bank_account extends \akou\DBTable
 {
 	var $id;
 	var $name;
+	var $email;
 	var $is_a_payment_method;
 	var $user_id;
 	var $created;
@@ -57,6 +58,7 @@ class bank_movement extends \akou\DBTable
 	var $payment_id;
 	var $received_by_user_id;
 	var $client_user_id;
+	var $provider_user_id;
 	var $amount_received;
 	var $total;
 	var $type;
@@ -65,6 +67,7 @@ class bank_movement extends \akou\DBTable
 	var $invoice_attachment_id;
 	var $bank_account_id;
 	var $note;
+	var $paid_date;
 	var $created;
 	var $updated;
 }
@@ -73,6 +76,9 @@ class bank_movement_bill extends \akou\DBTable
 	var $id;
 	var $bank_movement_id;
 	var $bill_id;
+	var $currency_id;
+	var $currency_amount;
+	var $exchange_rate;
 	var $amount;
 	var $created;
 	var $updated;
@@ -110,7 +116,7 @@ class bill extends \akou\DBTable
 	var $due_date;
 	var $paid_date;
 	var $total;
-	var $currency;
+	var $currency_id;
 	var $amount_paid;
 	var $status;
 	var $paid_status;
@@ -399,6 +405,7 @@ class payment extends \akou\DBTable
 	var $id;
 	var $company_id;
 	var $type;
+	var $tag;
 	var $concept;
 	var $payment_amount;
 	var $received_amount;
