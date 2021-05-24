@@ -47,9 +47,14 @@ class Service extends SuperRest
 		$payment_prop				= ArrayUtils			::getItemsProperties($payment_array,'id','paid_by_user_id', 'received_by_user_id');
 		$bank_movement_array		= bank_movement			::search(array('payment_id'=>$payment_prop['id']),false,'id');
 		$bank_movement_grouped 		= ArrayUtils			::groupByIndex($bank_movement_array,'payment_id');
-		$bank_movement_order_array	= bank_movement_order	::search(array('bank_movement_id'=>array_keys($bank_movement_array)), false, 'id');
+
+		$bms_search					= array('bank_movement_id'=>array_keys($bank_movement_array));
+
+		$bank_movement_order_array	= bank_movement_order	::search( $bms_search , false, 'id');
+		$bank_movement_bill_array	= bank_movement_bill	::search( $bms_search, false, 'id');
 
 		$bmo_group_array		= ArrayUtils::groupByIndex($bank_movement_order_array,'bank_movement_id');
+		$bmb_group_array		= ArrayUtils::groupByIndex($bank_movement_bill_array,'bank_movement_id');
 
 		foreach($payment_array as $payment)
 		{
@@ -59,11 +64,14 @@ class Service extends SuperRest
 
 			foreach($bm_array as $bank_movement)
 			{
-				$bmoa_grouped = $bmo_group_array[ $bank_movement['id'] ]??array();
+				$bmoa_grouped	= $bmo_group_array[ $bank_movement['id'] ]??array();
+				$bmba_grouped	= $bmb_group_array[ $bank_movement['id'] ]??array();
+
 				$movements[] = array
 				(
 					'bank_movement'=>$bank_movement,
 					'bank_movement_orders'=>$bmoa_grouped,
+					'bank_movement_bills'=>$bmba_grouped
 				);
 			}
 
@@ -111,6 +119,7 @@ class Service extends SuperRest
 	{
 		$user	= app::getUserFromSession();
 		$bank_movement_order_props = bank_movement_order::getAllPropertiesExcept('id','created','updated','bank_movement_id');
+		$bank_movement_bill_props = bank_movement_order::getAllPropertiesExcept('id','created','updated','bank_movement_id');
 		$result	= array();
 
 		foreach($array as $payment_info_array)
@@ -132,84 +141,131 @@ class Service extends SuperRest
 
 			foreach($payment_info_array['movements'] as $bank_movement_info_array)
 			{
+				if( empty( $bank_movement_info_array['bank_movement_orders'] ) && empty( $bank_movement_info_array['bank_movement_bills'] ) )
+				{
+					throw new ValidationException('Orders and bills cant are empty you need to provide at least one');
+				}
+
+				if( !empty( $bank_movement_info_array['bank_movement_orders'] ) && !empty( $bank_movement_info_array['bank_movement_bills'] ) )
+				{
+					throw new ValidationException('Solo se puede agregar un solo tipo o gasto o pago');
+				}
+
+				$type = empty( $bank_movement_info_array['bank_movement_orders'] ) ? 'expense':'income';
+
 				$bank_movement						= new bank_movement();
 				$bank_movement->assignFromArray( $bank_movement_info_array['bank_movement'] );
 				$bank_movement->payment_id			= $payment->id;
 				$bank_movement->received_by_user_id	= $user->id;
-				$bank_movement->type 				= 'income';
+				$bank_movement->type 				= $type;
 
 				if( !$bank_movement->insertDb() )
 				{
-										throw new SystemException('Ocurrio un error por favor intetar mas tarde. '.$bank_movement->getError());
+					throw new SystemException('Ocurrio un error por favor intetar mas tarde. '.$bank_movement->getError());
 				}
 
-				foreach( $bank_movement_info_array['bank_movement_orders'] as $bank_movement_order_data)
+
+				if( !empty( $bank_movement_info_array['bank_movement_orders'] ) )
 				{
-					$bank_movement_order			=  new bank_movement_order();
-					$bank_movement_order->assignFromArray( $bank_movement_order_data, $bank_movement_order_props );
-
-					if(empty( $bank_movement_order->order_id)  )
+					foreach( $bank_movement_info_array['bank_movement_orders'] as $bank_movement_order_data)
 					{
+						$bank_movement_order			=  new bank_movement_order();
+						$bank_movement_order->assignFromArray( $bank_movement_order_data, $bank_movement_order_props );
 
-						throw new ValidationException('El id de la orden no puede estar vacio');
+						if(empty( $bank_movement_order->order_id)  )
+						{
+							throw new ValidationException('El id de la orden no puede estar vacio');
+						}
+
+						$order = order::get( $bank_movement_order->order_id );
+
+						if( $order->status == 'PENDING')
+						{
+							$order->status = 'ACTIVE';
+							$order->system_activated = date('Y-m-d H:i:s');
+							if( !$order->update('status','system_activated') )
+							{
+								throw new SystemException('Ocurrio un error no se puedo actualizar la informacion de laorden');
+							}
+						}
+
+						if( empty( $order ) )
+						{
+							throw new SystemException('Ocurrio un error no se encontro la orden con id.'.$bank_movement_order->order_id );
+						}
+
+						//Lo estoy haciendo por si se equivocan al asignar el exchange_rate, la comparacion no es necesaria
+						if( $bank_movement_order->currency_id !== $order->currency_id )
+						{
+							$bank_movement_order->amount	= $bank_movement_order->currency_amount*$bank_movement_order->exchange_rate;
+						}
+						else
+						{
+							$bank_movement_order->amount	= $bank_movement_order->currency_amount;
+						}
+
+						$order->amount_paid += $bank_movement_order->amount;
+
+						if( ($order->total - $order->amount_paid) <= 0.01 )
+						{
+							$order->paid_status = 'PAID';
+						}
+						else
+						{
+							$order->paid_status = 'PARTIALLY_PAID';
+						}
+
+						if( !$order->updateDb('amount_paid','paid_status') )
+						{
+							throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$order->getError());
+						}
+
+						$bank_movement_order->bank_movement_id 		= $bank_movement->id;
+						$bank_movement_order->payment_id			= $payment->id;
+						$bank_movement_order->created_by_user_id	= $user->id;
+						$bank_movement_order->updated_by_user_id	= $user->id;
+
+						if( !$bank_movement_order->insertDb() )
+						{
+							$currency = currency::get( $bank_movement->currency_id );
+							error_log('currency'. print_r( $currency->toArray(),true ) );
+							error_log('BMO'. print_r( $bank_movement_order->toArray(),true ) );
+
+							throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$bank_movement_order->getError());
+						}
+					}
+				}
+
+				//Posiblemente falta un poco de trabajo aqui. se da por echo que se esta pagando todo el bill
+				foreach( $bank_movement_info_array['bank_movement_bills'] as $bank_movement_bill_data )
+				{
+					$bank_movement_bill	=  new bank_movement_bill();
+					$bank_movement_bill->assignFromArray( $bank_movement_bill_data['bank_movement_bill'], $bank_movement_bill_props );
+
+					$bill = null;
+
+					if(!empty( $bank_movement_bill->bill_id )  )
+					{
+						$bill = bill::get( $bank_movement_bill->bill_id );
 					}
 
-
-					$order = order::get( $bank_movement_order->order_id );
-
-					if( $order->status == 'PENDING')
+					if( !$bill &&  $bank_movement_bill_data['bill'] )
 					{
-						$order->status = 'ACTIVE';
-						$order->system_activated = date('Y-m-d H:i:s');
-						if( !$order->update('status','system_activated') )
+						$bill = new bill();
+						$bill->assignFromArray( $bank_movement_bill_data['bill'] );
+
+						if( !$bill->insert()  )
 						{
-							throw new SystemException('Ocurrio un error no se puedo actualizar la informacion de laorden');
+							throw new SystemException('Ocurrio un error por favor intentar mas tarde '.$bill->getError());
 						}
 					}
 
-					if( empty( $order ) )
-					{
-						throw new SystemException('Ocurrio un error no se encontro la orden con id.'.$bank_movement_order->order_id );
-					}
+					$bank_movement_bill->bank_movement_id = $bank_movement->id;
+					$bank_movement_bill->bill_id = $bill->id;
 
-					//Lo estoy haciendo por si se equivocan al asignar el exchange_rate, la comparacion no es necesaria
-					if( $bank_movement_order->currency_id !== $order->currency_id )
+					if( !$bank_movement_bill->insert() )
 					{
-						$bank_movement_order->amount	= $bank_movement_order->currency_amount*$bank_movement_order->exchange_rate;
-					}
-					else
-					{
-						$bank_movement_order->amount	= $bank_movement_order->currency_amount;
-					}
-
-					$order->amount_paid += $bank_movement_order->amount;
-
-					if( ($order->total - $order->amount_paid) <= 0.01 )
-					{
-						$order->paid_status = 'PAID';
-					}
-					else
-					{
-						$order->paid_status = 'PARTIALLY_PAID';
-					}
-
-					if( !$order->updateDb('amount_paid','paid_status') )
-					{
-						throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$order->getError());
-					}
-
-					$bank_movement_order->bank_movement_id 		= $bank_movement->id;
-					$bank_movement_order->payment_id			= $payment->id;
-					$bank_movement_order->created_by_user_id	= $user->id;
-					$bank_movement_order->updated_by_user_id	= $user->id;
-
-					if( !$bank_movement_order->insertDb() )
-					{
-						$currency = currency::get( $bank_movement->currency_id );
-						error_log('currency'. print_r( $currency->toArray(),true ) );
-						error_log('BMO'. print_r( $bank_movement_order->toArray(),true ) );
-
-						throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$bank_movement_order->getError());
+						throw new SystemException('Ocurrio un error por favor intentar mas tarde '.$bill->getError());
 					}
 				}
 			}
@@ -220,6 +276,8 @@ class Service extends SuperRest
 		return  $result;
 	}
 }
+
+
 
 $l = new Service();
 $l->execute();
