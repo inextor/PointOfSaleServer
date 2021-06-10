@@ -448,7 +448,6 @@ class SuperRest extends \akou\RestController
 
 		foreach($array as $index=>$params )
 		{
-
 			$obj_inst = $class_name::createFromArray( $params );
 
 			if( $insert_with_ids )
