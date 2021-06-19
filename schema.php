@@ -194,6 +194,20 @@ class category_type extends \akou\DBTable
 	var $id;
 	var $TYPE;
 }
+class commanda extends \akou\DBTable
+{
+	var $id;
+	var $commanda_type_id;
+	var $name;
+	var $store_id;
+}
+class commanda_type extends \akou\DBTable
+{
+	var $id;
+	var $name;
+	var $created;
+	var $updated;
+}
 class currency extends \akou\DBTable
 {
 	var $id;
@@ -237,6 +251,7 @@ class item extends \akou\DBTable
 {
 	var $id;
 	var $product_id;
+	var $commanda_type_id;
 	var $category_id;
 	var $image_id;
 	var $brand_id;
@@ -244,12 +259,13 @@ class item extends \akou\DBTable
 	var $code;
 	var $name;
 	var $extra_name;
+	var $note_required;
 	var $on_sale;
 	var $availability_type;
 	var $description;
 	var $reference_price;
 	var $clave_sat;
-	var $unidad_medida_sat;
+	var $unidad_medida_sat_id;
 	var $created_by_user_id;
 	var $updated_by_user_id;
 	var $created;
@@ -326,6 +342,7 @@ class order extends \akou\DBTable
 	var $cashier_user_id;
 	var $store_id;
 	var $shipping_address_id;
+	var $billing_address_id;
 	var $tax_percent;
 	var $price_type_id;
 	var $currency_id;
@@ -333,7 +350,12 @@ class order extends \akou\DBTable
 	var $paid_status;
 	var $facturado;
 	var $sat_xml_file_id;
+	var $sat_rfc;
+	var $sat_razon_social;
+	var $sat_email;
 	var $sat_pdf_id;
+	var $sat_uso_cfdi;
+	var $sat_codigo_postal;
 	var $tag;
 	var $paid_timetamp;
 	var $client_name;
@@ -360,7 +382,10 @@ class order_item extends \akou\DBTable
 	var $id;
 	var $order_id;
 	var $delivery_status;
+	var $tax_included;
+	var $delivered_qty;
 	var $status;
+	var $commanda_id;
 	var $commanda_status;
 	var $item_id;
 	var $item_position;
@@ -375,8 +400,12 @@ class order_item extends \akou\DBTable
 	var $original_unitary_price;
 	var $unitary_price;
 	var $subtotal;
+	var $discount;
 	var $tax;
 	var $total;
+	var $preparation_status;
+	var $system_preparation_started;
+	var $system_preparation_ended;
 	var $created_by_user_id;
 	var $updated_by_user_id;
 }
@@ -664,6 +693,12 @@ class store_currency_rate extends \akou\DBTable
 	var $first_currency_id;
 	var $second_currency_id;
 	var $rate;
+}
+class unidad_medida_sat extends \akou\DBTable
+{
+	var $id;
+	var $nombre;
+	var $descripcion;
 }
 class user extends \akou\DBTable
 {
