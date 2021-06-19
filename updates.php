@@ -216,7 +216,6 @@ class Service extends SuperRest
 		$params = $this->getMethodParams();
 		$shipping = shipping::get( $params['shipping_id'] );
 
-
 		if( $shipping->status == 'DELIVERED' )
 			throw new ValidationException('El envio ya fue recibido previamente');
 
@@ -392,10 +391,9 @@ class Service extends SuperRest
 			throw new ValidationException('La orden no se encontro');
 		}
 
-		if( $order->delivery_status == 'DELIVERED')
-			throw new ValidationException('La orden ya ha sido entregada previamente');
 
-		app::updateOrderTotal($order->id);
+		if( $order->status !== 'CLOSED' )
+			app::updateOrderTotal($order->id);
 
 		$order_item_array = order_item::search(array('delivery_status'=>"PENDING"));
 
@@ -405,7 +403,6 @@ class Service extends SuperRest
 			app::extractOrderItem($order_item, $user);
 		}
 
-
 		$order->delivery_status = 'DELIVERED';
 		$order->updated_by_user_id = $user->id;
 
@@ -413,17 +410,6 @@ class Service extends SuperRest
 		{
 			throw new SystemException('Ocurrio un error, por favor intentar mas tarde. '.$order->getError());
 		}
-
-
-		$push_notification = new push_notification();
-		$push_notification->user_id = $order->created_by_user_id;
-		$push_notification->title = 'Nueva Venta';
-		$push_notification->body = 'Nueva venta para '.$order->client_user_id.' en la sucursal '.$order->store_id;
-		$push_notification->icon_image_id = 51;
-		$push_notification->object_type = 'order';
-		$push_notification->app_path = '/view-order/'.$order->id;
-		$push_notification->object_id = $order->id;
-		$push_notification->insertDb();
 
 		//app::sendNotification($notification,array($order->cashier_user_id));
 
@@ -805,6 +791,29 @@ function removeBoxFromPallet()
 		$this->sendStatus(200)->json(true);
 	}
 
+	function markOrderItemAsDelivered()
+	{
+		$params				= $this->getMethodParams();
+		$order_item_ids		= $params['order_item_ids'];
+		$order_item_array	= order_item::search(array('id'=>$order_item_ids),true,);
+
+		foreach( $order_item_array as $order_item )
+		{
+			if( $order_item->delivered_status == 'PENDING' )
+			{
+				$order_item->delivered_status = 'DELIVERED';
+				$order_item->system_preparation_ended = date('Y-m-d H:i:s');
+
+				if( !$order_item->update('delivered_status','system_preparation_ended') )
+				{
+					throw new ValidationException('Ocurrio un error al guardar la informacion ',$order_item->getError());
+				}
+			}
+		}
+
+		return $this->sendStatus(200)->json(true);
+	}
+
 	function adjustStock()
 	{
 		$user = app::getUserFromSession();
@@ -824,6 +833,41 @@ function removeBoxFromPallet()
 
 		return $results;
 	}
+
+	function addOrderItemsToCommanda()
+	{
+		error_log('ADD ORDER ITEMS TO COMMANDA');
+		$user = app::getUserFromSession();
+		if( !$user )
+			throw new SessionException('Por favor iniciar session');
+
+		$params = $this->getMethodParams();
+		$order_id = $params['order_id'];
+
+		app::addOrderItemsToCommanda($order_id);
+		return $this->sendStatus(200)->json(true);
+	}
+
+	//function toggleReadyOrderItem()
+	//{
+	//	$user = app::getUserFromSession();
+	//	if( !$user )
+	//		throw new SessionException('Por favor iniciar session');
+
+	//	$params = $this->getMethodParams();
+	//	$order_item = order_item::get(  $params['order_item_id'] );
+
+	//	if( empty( $order_item ) )
+	//	{
+	//		throw new ValidationException('no se encontrol el detalle de la orden con id'.$params['order_item_id'] );
+	//	}
+
+	//	if( $order_item->preparation_status == '')
+	//	{
+
+	//	}
+	//}
+
 }
 
 $l = new Service();
