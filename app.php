@@ -480,7 +480,7 @@ class App
 		{
 
 		}
-		static::removeStock($order_item_fullfillment->item_id, $order->store_id, $user->id, $order_item_fullfillment->qty,'Surtiendo la orden '.$order->id);
+		//static::removeStock($order_item_fullfillment->item_id, $order->store_id, $user->id, $order_item_fullfillment->qty,'Surtiendo la orden '.$order->id);
 	}
 
 	static function adjustStock($item_id, $store_id, $user_id, $qty, $description )
@@ -949,92 +949,93 @@ class App
 		$order = order::get( $order_id );
 		$order_item_array = order_item::search(array('order_id'=>$order_id,'status'=>'ACTIVE') );
 
+		if( $order->status == 'CLOSED' )
+			throw new ValidationException('La orden ya se cerro');
+
 		//$pagos		= pago::search(array('id_venta'=>$id_venta ) );
 		$order->total	= 0;
-		$poner_precios	= $order->status == 'PENDING';
-		error_log('Poner precios"'.$poner_precios.'"');
 
 		//Una vez que se hace el trato el precio no se modifica
-		if( $poner_precios )
+		$order->subtotal 	= 0;
+		$order->total		= 0;
+		$order->tax			= 0;
+
+		foreach($order_item_array as $order_item)
 		{
-			$order->subtotal 	= 0;
-			$order->total		= 0;
-			$order->tax			= 0;
+			$store = store::get($order->store_id );
+			//$price = price::searchFirst(array('price_type_id'=>$order->price_type_id,'item_id'=>$order_item->item_id,'price_list_id'=>$store->price_list_id));
 
-			foreach($order_item_array as $order_item)
+			//if( $price == NULL )
+			//{
+			//	$item = item::get( $price->item_id );
+			//	$category_name = '';
+
+			//	if( $item->category_id )
+			//	{
+			//		$category = category::get( $item->category_id );
+			//		$category_name = $category->name;
+			//	}
+
+			//	throw new ValidationException('No existe precio para "'.$category_name.' '.$item->name.'" en sucursal '.$store->name.' codigo: utv1');
+			//}
+
+			//$item	= item::get($order_item->item_id);
+			//$category	= category::get( $item->category_id );
+
+			//$order_item->price			= $price->price;
+
+			if( $order_item->is_free_of_charge == 'YES' )
 			{
-				$store = store::get($order->store_id );
-				$price = price::searchFirst(array('price_type_id'=>$order->price_type_id,'item_id'=>$order_item->item_id,'price_list_id'=>$store->price_list_id));
-
-				if( $price == NULL )
-				{
-					$item = item::get( $price->item_id );
-					$category_name = '';
-
-					if( $item->category_id )
-					{
-						$category = category::get( $item->category_id );
-						$category_name = $category->name;
-					}
-
-					throw new ValidationException('No existe precio para "'.$category_name.' '.$item->name.'" en sucursal '.$store->name.' codigo: utv1');
-				}
-
-				$item	= item::get($order_item->item_id);
-				$category	= category::get( $item->category_id );
-
-				$order_item->price			= $price->price;
-
-				if( $order_item->is_free_of_charge == 'YES' )
-				{
-					$order_item->total			= 0;
-					$order_item->subtotal		= 0;
-					$order_item->tax			= 0;
-					$order_item->unitary_price	= $price->price;
-				}
-				else if( false )
-				{
-					$order_item->total			= $order_item->original_unitary_price*$order_item->qty;
-					$order_item->subtotal		= sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
-					$order_item->unitary_price	= $order_item->subtotal/$order_item->qty;
-					$order_item->tax 			= sprintf('%0.6f',$order_item->total-$order_item->subtotal);
-				}
-				else
-				{
-					$order_item->subtotal		= $order_item->original_unitary_price*$order_item->qty;
-					$order_item->unitary_price	= $order_item->original_unitary_price;
-					$order_item->tax 			= sprintf('%0.6f',$order_item->subtotal*($store->tax_percent/100));
-					$order_item->total			= sprintf('%0.6f',$order_item->subtotal+$order_item->tax);
-				}
-
-
-				if(!$order_item->update('price','total','subtotal','tax','unitary_price') ) {
-					throw new SystemException('Ocurrio un error por favor intente mas tarde Codigo: utv2');
-				}
-
-				error_log('order_item_total'.$order_item->total );
-				$order->total			+= $order_item->total;
-				$order->subtotal		+= $order_item->subtotal;
-				$order->tax				+= $order_item->tax;
+				$order_item->total			= 0;
+				$order_item->subtotal		= 0;
+				$order_item->tax			= 0;
+				//$order_item->unitary_price	= $price->price;
+			}
+			else if( false )
+			{
+				//$order_item->subtotal		= sprintf('%0.6f',$order_item->total/(1+($store->tax_percent*0.01) ));
+				$order_item->total			= $order_item->original_unitary_price*$order_item->qty;
+				$order_item->unitary_price	= $order_item->subtotal/$order_item->qty;
+				$order_item->tax 			= sprintf('%0.6f',$order_item->total-$order_item->subtotal);
+			}
+			else
+			{
+				//order_item->subtotal		= $order_item->original_unitary_price*$order_item->qty;
+				error_log('order item '.print_r( $order_item,true) );
+				$order_item->unitary_price	= $order_item->original_unitary_price;
+				$order_item->tax 			= sprintf('%0.6f',$order_item->subtotal*($store->tax_percent/100));
+				$order_item->total			= sprintf('%0.6f',$order_item->subtotal+$order_item->tax);
 			}
 
-			if( !empty( $order->shipping_cost) )
-			{
-				$order->total		+= $order->shipping_cost;
+
+			if(!$order_item->update('price','total','subtotal','tax','unitary_price') ) {
+				throw new SystemException('Ocurrio un error por favor intente mas tarde Codigo: utv2');
 			}
+
+			error_log('oi '.$order_item->total);
+
+			$order->total			+= $order_item->total;
+			$order->subtotal		+= $order_item->subtotal;
+			$order->tax				+= $order_item->tax;
 		}
 
-		error_log('Updating order_total '.print_r($order->toArray(), true ) );
+		if( !empty( $order->shipping_cost) )
+		{
+			$order->total		+= $order->shipping_cost;
+		}
+
+
 
 		if( !$order->update('total','subtotal','tax') )
 		{
 			throw new SystemException('Ocurrio un error al actualizar el total de la orden');
 		}
+		error_log('UPdating total'.$order->getLastQuery());
 	}
 
 	static function saveOrderItem($order_item_values )
 	{
-		error_log('Order item has '.print_R( $order_item_values, true) );
+		//error_log('Order item has '.print_R( $order_item_values, true) );
 
 		if( empty( $order_item_values['item_id'] ) )
 			throw new ValidationException('item id cant be empty');
@@ -1051,7 +1052,7 @@ class App
 
 		$order = order::get( $order_item_values['order_id'] );
 
-		if( $order->status !== 'PENDING' )
+		if( $order->status == 'CLOSED' )
 			throw new ValidationException('La orden ya fue procesada y no se puede editar');
 
 		if( $order == null )
@@ -1063,7 +1064,7 @@ class App
 			'item_id'			=> $item->id,
 			'order_id'			=> $order_item_values['order_id'],
 			'is_free_of_charge'	=> $order_item_values['is_free_of_charge'],
-			'status'			=> 'ACTIVE',
+			'status'			=> 'PENDING',
 			'item_position'		=> $order_item_values['item_position']
 		);
 
@@ -1093,29 +1094,38 @@ class App
 		}
 
 		$store = store::get( $order->store_id );
-		$price_search = array('item_id'=>$item->id,'price_list_id'=>$store->price_list_id,'price_type_id'=>$order->price_type_id);
+		//$price_search = array('item_id'=>$item->id,'price_list_id'=>$store->price_list_id,'price_type_id'=>$order->price_type_id);
 
-		$price	= price::searchFirst( $price_search );
+		//$price	= price::searchFirst( $price_search );
 
-		error_log('price_search'.print_r( $price_search, true ) );
+		//error_log('price_search'.print_r( $price_search, true ) );
 
 		$store = store::get( $order->store_id );
 
 		if( !$store )
 			throw new ValidationException('No se encontrol el almacen');
 
-		$order_item->item_id		= $order_item_values['item_id'];
-		$order_item->qty			= $order_item_values['qty'];
-		$order_item->status			= $order_item_values['status'];
+		$order_item->item_id			= $order_item_values['item_id'];
+		$order_item->qty				= $order_item_values['qty'];
+		$order_item->status				= $order_item_values['status'];
 		$order_item->return_required	= empty($order_item_values['return_required']) ? 'NO' : $order_item_values['return_required'];
-		$order_item->is_free_of_charge = empty( $order_item_values['is_free_of_charge'] ) ? 'NO' : $order_item_values['is_free_of_charge'] ;
-		$order_item->item_position	= $order_item_values['item_position'];
+		$order_item->is_free_of_charge	= empty( $order_item_values['is_free_of_charge'] ) ? 'NO' : $order_item_values['is_free_of_charge'] ;
+		$order_item->item_position		= $order_item_values['item_position'];
 
 		if( empty( $order_item->id ) )
 		{
-			$order_item->original_unitary_price	= $price->price;
-			$order_item->unitary_price			= $price->price;
-			$order_item->subtotal				= sprintf('%0.6f',$price->price*$order_item->qty);
+			$order_item->original_unitary_price	= $order_item_values['original_unitary_price'];
+			$order_item->unitary_price			= $order_item_values['unitary_price'];
+
+			if( $order_item->is_free_of_charge == 'YES' )
+			{
+				$order_item->subtotal	= 0;
+				$order_item->total		= 0;
+			}
+			else
+			{
+				$order_item->subtotal	= sprintf('%0.6f',$order_item->unitary_price*$order_item->qty);
+			}
 		}
 
 		if( empty( $order_item->id ) )
@@ -1234,6 +1244,69 @@ class App
 
 			$bank_movement->balance = "$balance";
 			$bank_movement->update('balance');
+		}
+	}
+
+	static function addOrderItemsToCommanda($order_id)
+	{
+		$order				= order::get( $order_id );
+
+		if( $order == null )
+			throw new ValidationException('No se encontro la orden con id:"'.$order_id.'"');
+
+		$order_item_search= array
+		(
+			'order_id'=>$order_id,
+			'status'=> 'ACTIVE',
+			'item_option_id'.DBTable::NULL_SYMBOL=>true,
+			'commanda_id'.DBTable::NULL_SYMBOL=>true
+		);
+
+		$order_item_array	= order_item::search( $order_item_search , true );
+		$item_ids			= ArrayUtils::getItemsProperty( $order_item_array, 'item_id');
+		$item_search		= array('id'=>$item_ids);
+		$item_array			= item::search( $item_search,true,'id' );
+		$order				= order::get( $order_id );
+
+		if( empty( $order->system_activated ) )
+		{
+			$order->system_activated = date('Y-m-d H:i:s');
+			$order->status = 'ACTIVE';
+
+			if( !$order->update('system_activated','status') )
+			{
+				throw new SystemException('Ocurrio un error al guardar la informacion. '.$order->getError());
+			}
+			error_log('ORDER UPDATE '.$order->getLastQuery());
+		}
+		else
+		{
+			error_log('No entro aqui');
+		}
+
+		foreach($order_item_array as $order_item)
+		{
+			$item = $item_array[ $order_item->item_id ];
+
+			if( !empty( $item->commanda_type_id ) )
+			{
+				$commanda = commanda::searchFirst(array('commanda_type_id'=>$item->commanda_type_id,'store_id'=>$order->store_id));
+
+				if(!empty( $commanda) )
+				{
+					$order_item->commanda_id = $commanda->id;
+					$order_item->system_preparation_started = date('Y-m-d H:i:s');
+					if( !$order_item->update('commanda_id','system_preparation_started') )
+					{
+						throw new SystemException('Ocurrio un error al actualizar la orden.'.$order_item->getError());
+					}
+				}
+				else
+				{
+					error_log('No se encontro el tipo de commanda para agregar el item '.$item->commanda_type_id);
+					//Enviar notificacion de que no existe el tipo de comanda
+				}
+			}
 		}
 	}
 }
