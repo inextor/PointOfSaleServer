@@ -74,7 +74,7 @@ class Service extends SuperRest
 					'item'			=> $item,
 					'item_option'	=> $item_option,
 					'item_extra'	=> $item_extra
-				)
+				);
 			}
 
 			$result = array(
@@ -196,8 +196,18 @@ class Service extends SuperRest
 		$orden->id = $orden_info['orden']['id'];
 		$props = order::getAllPropertiesExcept('created','updated','id');
 		$orden->assignFromArray( $orden_info['orden'], $props );
-
 		$orden->setWhereString( true );
+
+		if( !empty( $orden->system_activated) )
+		{
+			$time = strtotime( $orden->system_activated );
+			$order->system_activated = date('Y-m-d H:i:s',$time);
+			error_log('Time is ', $order->system_activated );
+		}
+		else
+		{
+			error_log('Time is empty');
+		}
 
 		if( !$orden->update() )
 		{
@@ -276,3 +286,4 @@ class Service extends SuperRest
 
 $l = new Service();
 $l->execute();
+

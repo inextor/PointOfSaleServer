@@ -98,8 +98,6 @@ class Service extends SuperRest
 			{
 				$iova	= isset( $grouped_item_option_value_array [ $option['id'] ] ) ? $grouped_item_option_value_array[ $option[ 'id'] ] : array();
 				$item_option_value_info_array = array();
-				$this->debug('tiene algo', $iova );
-
 				foreach( $iova as $item_option_value )
 				{
 					$item_extra = $item_extra_array[ $item_option_value['item_id'] ];
