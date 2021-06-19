@@ -164,7 +164,6 @@ class Service extends SuperRest
 					throw new SystemException('Ocurrio un error por favor intetar mas tarde. '.$bank_movement->getError());
 				}
 
-
 				if( !empty( $bank_movement_info_array['bank_movement_orders'] ) )
 				{
 					foreach( $bank_movement_info_array['bank_movement_orders'] as $bank_movement_order_data)
@@ -181,8 +180,11 @@ class Service extends SuperRest
 
 						if( $order->status == 'PENDING')
 						{
-							$order->status = 'ACTIVE';
+							app::addOrderItemsToCommanda($order->id);
+
 							$order->system_activated = date('Y-m-d H:i:s');
+							$order->status = 'CLOSED';
+
 							if( !$order->update('status','system_activated') )
 							{
 								throw new SystemException('Ocurrio un error no se puedo actualizar la informacion de laorden');
@@ -215,7 +217,9 @@ class Service extends SuperRest
 							$order->paid_status = 'PARTIALLY_PAID';
 						}
 
-						if( !$order->updateDb('amount_paid','paid_status') )
+						$order->status = 'CLOSED';
+
+						if( !$order->updateDb('amount_paid','paid_status','status') )
 						{
 							throw new SystemException('Ocurrio un error por favor intentar mas tarde. '.$order->getError());
 						}
