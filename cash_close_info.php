@@ -81,17 +81,18 @@ class Service extends SuperRest
 			JOIN item ON item.id = order_item.item_id
 			LEFT JOIN category ON category.id = item.category_id
 			WHERE
-				`order`.status	= "ACTIVE"
+				`order`.status	= "CLOSED"
 				AND `order`.system_activated BETWEEN "'.$cash_close->since.'" AND "'.$cash_close->created.'"
 				AND `order`.cashier_user_id = "'.$cash_close->created_by_user_id.'"
 			GROUP BY item_id, is_free_of_charge, unitary_price';
 
+		error_log('CASH CLOSE'. $sale_item_sql );
 		$item_sales		= DBTable::getArrayFromQuery( $sale_item_sql );
 
 		$search_array	= array
 		(
 			'cashier_user_id'						=> $cash_close->created_by_user_id,
-			'status'								=> 'ACTIVE',
+			'status'								=> 'CLOSED',
 			'system_activated'.DBTable::GE_SYMBOL	=> $cash_close->since,
 			'system_activated'.DBTable::LE_SYMBOL	=> $cash_close->created
 		);
