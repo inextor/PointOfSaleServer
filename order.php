@@ -5,11 +5,6 @@ include_once( __DIR__.'/app.php' );
 include_once( __DIR__.'/akou/src/ArrayUtils.php');
 include_once( __DIR__.'/SuperRest.php');
 
-use \akou\DBTable;
-use \akou\ValidationException;
-use \akou\LoggableException;
-use AKOU\SystemException;
-
 class Service extends SuperRest
 {
 	function get()
@@ -17,6 +12,16 @@ class Service extends SuperRest
 		session_start();
 		App::connect();
 		$this->setAllowHeader();
+
+		$user = app::getUserFromSession();
+
+		if( !$user )
+			return $this->sendStatus(401)->json(array('error'=>'Por favor iniciar sesion'));
+
+		$extra_constraints = array();
+
+		if( $user->type == "CLIENT" )
+			$extra_constraints[] = 'order.client_user_id= '.$user->id;
 
 		return $this->genericGet("order");
 	}
