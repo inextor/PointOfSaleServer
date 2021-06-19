@@ -194,8 +194,13 @@ class Service extends SuperRest
 
 	function batchUpdate($array)
 	{
-		$props = order::getAllPropertiesExcept('store_id','delivery_status','paid_status','total','subtotal','tax','amount_paid','created_by_user_id','updated_by_user_id','created','updated');
-		$this->debug('Props',$props);
+		$props = order::getAllPropertiesExcept
+		(
+			'store_id','delivery_status','paid_status',
+			'total', 'subtotal', 'tax', 'amount_paid',
+			'created_by_user_id', 'updated_by_user_id',
+			'created','updated','system_activated'
+		);
 
 		$results = array();
 
@@ -239,7 +244,13 @@ class Service extends SuperRest
 		$system_values		=array( 'cashier_user_id' => $user->id );
 		$new_result = array();
 
-		$order_properties= order::getAllPropertiesExcept(array('id','created','updated','tiempo_creacion','tiempo_actualizacion','updated_by_user_id','created_by_user_id'));
+		$order_properties= order::getAllPropertiesExcept
+		(
+				array('id','created','updated'
+				,'tiempo_creacion','tiempo_actualizacion','updated_by_user_id','created_by_user_id'
+				,'system_preparation_ended','system_preparation_started'
+				)
+		);
 
 		foreach( $array as $order_values )
 		{
