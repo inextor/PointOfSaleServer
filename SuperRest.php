@@ -44,7 +44,6 @@ class SuperRest extends \akou\RestController
 		if( !empty( $_GET['limit'] ) )
 			$page_size = intval( $_GET['limit'] );
 
-
 		return	$this->getPaginationInfo($page,$page_size,20);
 	}
 	function getEqualConstraints($array,$table_name='')
@@ -330,8 +329,6 @@ class SuperRest extends \akou\RestController
 		{
 			error_log('GENERIC SQL '.$sql );
 		}
-
-
 
 		$info	= DBTable::getArrayFromQuery( $sql );
 		$total	= DBTable::getTotalRows();
