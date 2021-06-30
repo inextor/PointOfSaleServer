@@ -218,6 +218,13 @@ class Service extends SuperRest
 
 	function batchUpdate($array)
 	{
+		$user = app::getUserFromSession();
+
+		if( $user == null )
+			throw new ValidationException('Please login');
+
+		$props	= item::getAllPropertiesExcept('updated','created','created_by_user_id');
+
 		$result = array();
 		foreach($array as $params )
 		{
@@ -225,9 +232,10 @@ class Service extends SuperRest
 			if( $item == null )
 				throw new SystemException('Ocurrio un error por favor intentar mas tarde. ');
 
-			$item->assignFromArray($params['item']);
+			$item->updated_by_user_id = $user->id;
+			$item->assignFromArray($params['item'],$props);
 
-			if( !$item->update() )
+			if( !$item->update( $props ) )
 			{
 				throw new SystemException('Ocurrio un error por favor intentar mas tarde');
 			}
@@ -350,7 +358,7 @@ class Service extends SuperRest
 			}
 
 
-			$this->updateItemExtra( $item_option, $params['values'] );
+			$this->updateItemOptionValues( $item_option, $params['values'] );
 			$results[] = $item_option->toArray();
 		}
 
@@ -363,6 +371,8 @@ class Service extends SuperRest
 			DBTable::query($sql);
 		}
 	}
+
+
 
 	function updateAttributes($item, $item_attributes_params)
 	{
