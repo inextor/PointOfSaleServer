@@ -726,7 +726,7 @@ function removeBoxFromPallet()
 
 			if( $box_content->qty < $order_item_fullfillment->qty )
 			{
-				throw new ValidationException('La caja no contine la cantidad de articulos solicitados');
+				throw new ValidationException('La caja no contine la cantidad de articulos solicitados BOX'.$box_content->id);
 			}
 
 			if( !$order_item_fullfillment->insertDb() )
