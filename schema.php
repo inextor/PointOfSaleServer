@@ -388,7 +388,7 @@ class order_item extends \akou\DBTable
 	var $commanda_id;
 	var $commanda_status;
 	var $item_id;
-	var $item_position;
+	var $item_group;
 	var $item_option_id;
 	var $return_required;
 	var $item_extra_id;
@@ -495,6 +495,7 @@ class preparation_area extends \akou\DBTable
 class price extends \akou\DBTable
 {
 	var $id;
+	var $tax_included;
 	var $price_list_id;
 	var $currency_id;
 	var $item_id;
