@@ -1107,10 +1107,10 @@ class App
 
 		$order_item->item_id			= $order_item_values['item_id'];
 		$order_item->qty				= $order_item_values['qty'];
-		$order_item->status				= $order_item_values['status'];
+		$order_item->status				= $order_item_values['status']??'ACTIVE';
 		$order_item->return_required	= empty($order_item_values['return_required']) ? 'NO' : $order_item_values['return_required'];
 		$order_item->is_free_of_charge	= empty( $order_item_values['is_free_of_charge'] ) ? 'NO' : $order_item_values['is_free_of_charge'] ;
-		$order_item->position_group		= $order_item_values['position_group'];
+		$order_item->item_group			= $order_item_values['item_group'];
 
 		if( empty( $order_item->id ) )
 		{
