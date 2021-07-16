@@ -87,7 +87,7 @@ class Service extends SuperRest
 					{
 						$item_option_value_info_array = array
 						(
-							'item_option_value'	=>	$item_option_value,
+							'item_option_value'	=> $item_option_value,
 							'item'				=> $items_from_values_array[ $item_option_value['item_id'] ],
 						);
 					}
